@@ -1,3 +1,10 @@
+## v0.5.8 – Prozentwerte linksbündig und ganzzahlig (2026-11-03)
+
+- Kleines Quellen-Badge oben rechts: PV-, Akku-, Netz- und offene Anteile linksbündig, auch bei einer einzigen Zeile.
+- Prozentwerte auf ganze Zahlen (0 Nachkommastellen) gerundet.
+- Badge-Größe und Position bleiben unverändert; Leistungswert und Tagesenergie ebenfalls.
+- Regressionstest für Ausrichtung und Rundung erweitert. Keine Änderung der Wattverteilung oder Dashboard-Konfiguration.
+
 ## v0.5.7 – Kompakte Quellanteile wiederhergestellt (2026-11-03)
 
 - Rücknahme des unbeabsichtigten Vollbreiten-Blocks für Quellen-Prozentwerte aus v0.5.6.
