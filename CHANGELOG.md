@@ -1,3 +1,11 @@
+## v0.5.9 – Verbraucher sortieren und Schriftgröße prozentuell einstellen (2026-11-03)
+
+- Klassische Listenansicht sortiert nun **alle** sichtbaren Verbraucherkacheln nach aktueller Leistung (W), einschließlich **Sonstige** (zusammengefasste Verbraucher) und **Nicht erfasst** (Restlast). Größter Verbraucher steht oben, stabile Reihenfolge bei Gleichstand.
+- Die Quellen-Zuordnung (PV, Akku, Netz), Linien und Prozentwerte bleiben von der visuellen Sortierung unabhängig.
+- Neuer Schieberegler und Zahlenfeld **Schriftgröße aller Kartentexte (%)** in *Darstellung & Animation*: 50–200 %, Standard 100 %. Skaliert Namen, Titel, Werte, Einheiten, Quell-Badges und Statistiken; klassische und radiale Ansicht.
+- Kompatibel mit bestehendem `font_scale` in YAML (1.0 = 100 %). Zusätzliche Regressionstests gegen Sortierungs- und Schriftgrößenfehler.
+- Keine Änderungen der gespeicherten Verbraucher-Konfiguration; HA-Live-Test noch ausstehend.
+
 ## v0.5.8 – Prozentwerte linksbündig und ganzzahlig (2026-11-03)
 
 - Kleines Quellen-Badge oben rechts: PV-, Akku-, Netz- und offene Anteile linksbündig, auch bei einer einzigen Zeile.
