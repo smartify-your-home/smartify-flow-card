@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.5.7';
+const SFC_VERSION = '0.5.8';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -375,7 +375,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .hd{display:flex;align-items:center;gap:6px;min-width:0}
 .hd ha-icon{--mdc-icon-size:18px;color:var(--sf-txt);flex:none}
 .nm{font-weight:800;color:var(--sf-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72em;letter-spacing:.06em;text-transform:uppercase;flex:1;min-width:0}
-.bd{flex:none;box-sizing:border-box;width:auto;max-width:56%;margin:0;text-align:center;align-self:center;font-family:inherit;font-size:calc(.6em + 2px);font-weight:600;letter-spacing:0;padding:2px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
+.bd{flex:none;box-sizing:border-box;width:auto;max-width:56%;margin:0;text-align:left;align-self:center;font-family:inherit;font-size:calc(.6em + 2px);font-weight:600;letter-spacing:0;padding:2px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
   background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:pre;line-height:1.25}
 .bd:empty{display:none}
 .val .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
@@ -509,10 +509,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     // Bestehendes kleines Badge rechts im Kopf behalten; Quellenanteile nur untereinander schreiben.
     const percentText = (w, total) => {
       const pct = total > 0 ? 100 * w / total : 0;
-      if (pct > 0 && pct < 0.1) return '<0,1 %';
-      return `${Number(pct.toFixed(1)).toLocaleString('de-DE', {
-        maximumFractionDigits: 1,
-      })} %`;
+      return `${Math.round(pct)} %`;
     };
     const consumerBadge = n => {
       if (n.w <= 0) return '';
