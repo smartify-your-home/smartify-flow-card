@@ -29,3 +29,4 @@ jobs:
           node tests/test_radial_stability.cjs
           node tests/test_source_order.cjs
           node tests/test_consumer_modal.cjs
+          node tests/test_picker_types.cjs
