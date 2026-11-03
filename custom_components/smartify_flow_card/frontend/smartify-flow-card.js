@@ -332,7 +332,7 @@ class SmartifyFlowCard extends HTMLElement {
 
   /* ---------- DOM ---------- */
   _build() {
-    const scale = Math.max(0.7, Math.min(1.4, Number(this._c.font_scale) || 1));
+    const scale = Math.max(0.5, Math.min(2, Number(this._c.font_scale) || 1));
     const transparency = Math.max(0, Math.min(100, Number(this._c.background_transparency) || 0));
     const maxW = Number(this._c.max_width) || 900;
     this.shadowRoot.innerHTML = `
@@ -364,7 +364,7 @@ ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padd
 .flow.radial .node{position:absolute;box-sizing:border-box;width:148px;max-width:148px;pointer-events:auto;padding:7px 8px calc(8px + var(--sf-accent-h))}
 .flow.radial .node .val{font-size:1.15em}
 .flow.radial .node .nm{font-size:.66em}
-.flow.radial .node .bd{font-size:calc(.53em + 2px)}
+.flow.radial .node .bd{font-size:.655em}
 .flow.radial .node ha-icon{--mdc-icon-size:16px}
 .flow.radial-narrow{display:grid;min-height:0;grid-template-columns:minmax(0,1fr) minmax(32px,.35fr) minmax(0,1fr)}
 .flow.radial-narrow .col{display:flex;position:relative;inset:auto;pointer-events:auto}
@@ -389,7 +389,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .hd{display:flex;align-items:center;gap:6px;min-width:0}
 .hd ha-icon{--mdc-icon-size:18px;color:var(--sf-txt);flex:none}
 .nm{font-weight:800;color:var(--sf-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72em;letter-spacing:.06em;text-transform:uppercase;flex:1;min-width:0}
-.bd{flex:none;box-sizing:border-box;width:auto;max-width:56%;margin:0;text-align:left;align-self:center;font-family:inherit;font-size:calc(.6em + 2px);font-weight:600;letter-spacing:0;padding:2px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
+.bd{flex:none;box-sizing:border-box;width:auto;max-width:56%;margin:0;text-align:left;align-self:center;font-family:inherit;font-size:.725em;font-weight:600;letter-spacing:0;padding:2px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
   background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:pre;line-height:1.25}
 .bd:empty{display:none}
 .val .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
@@ -1142,6 +1142,34 @@ class SmartifyFlowCardEditor extends HTMLElement {
     hint.textContent = '0 % = undurchsichtig, 100 % = vollständig transparent. Gerätekacheln bleiben für gute Lesbarkeit unverändert.';
     wrap.append(label, row, hint); section.append(wrap);
   }
+  _fontScaleControl(section) {
+    const wrap = document.createElement('div'); wrap.className = 'field';
+    const label = document.createElement('label');
+    label.textContent = 'Schriftgröße aller Kartentexte (%)';
+    const row = document.createElement('div'); row.className = 'opacity-control';
+    const slider = document.createElement('input');
+    slider.type = 'range'; slider.min = '50'; slider.max = '200'; slider.step = '5';
+    const number = document.createElement('input');
+    number.type = 'number'; number.min = '50'; number.max = '200'; number.step = '5';
+    const unit = document.createElement('span'); unit.textContent = '%';
+    const stored = Number(this._get(['font_scale']));
+    const initial = Math.max(50, Math.min(200, Math.round((Number.isFinite(stored) && stored > 0 ? stored : 1) * 100)));
+    slider.value = number.value = String(initial);
+    const apply = raw => {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed)) return;
+      const value = Math.max(50, Math.min(200, Math.round(parsed)));
+      slider.value = number.value = String(value);
+      // Keep existing stored configuration compatible (font_scale: 1 = 100%).
+      this._put(['font_scale'], value / 100);
+    };
+    slider.addEventListener('input', () => apply(slider.value));
+    number.addEventListener('change', () => apply(number.value));
+    row.append(slider, number, unit);
+    const hint = document.createElement('small');
+    hint.textContent = '100 % = bisherige Standardschrift. Wirkt auf Titel, Namen, Leistungswerte, Einheiten, Quellen-Badges und Statistiken. 50–200 %, auch im Radialmodus.';
+    wrap.append(label, row, hint); section.append(wrap);
+  }
   _render() {
     if (!this._config || !this._hass) return;
     this._ready = true;
@@ -1221,10 +1249,11 @@ class SmartifyFlowCardEditor extends HTMLElement {
     this._input(sec,'Kartentitel',['title']);
     this._select(sec,'Anordnung der Kacheln',['layout'], [['classic','Klassisch – Quellen links, Verbraucher rechts'],['radial','Radial – Quellen in der Mitte, Verbraucher rundherum']], 'classic');
     this._transparencyControl(sec);
+    this._fontScaleControl(sec);
     for (const [title,key] of [
       ['Maximal sichtbare Verbraucher','max_consumers'],
       ['Mindestleistung für Energieflusslinien (W)','min_flow'],['Max. erwartete Leistung (kW)','max_expected_power_kw'],
-      ['Animationsgeschwindigkeit','speed_multiplier'],['Schriftgröße / Skalierung','font_scale'],
+      ['Animationsgeschwindigkeit','speed_multiplier'],
       ['Maximale Kartenbreite (px)','max_width'],['Netzbezugsgrenze (kW)','contract_power_limit_kw'],
       ['Warnschwelle (0 bis 1)','contract_warning_pct']]) this._input(sec,title,[key],'number');
     this._toggle(sec,'Statistiken anzeigen',['show_stats'],true);
