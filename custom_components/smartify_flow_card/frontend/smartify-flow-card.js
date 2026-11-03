@@ -1014,10 +1014,10 @@ class SmartifyFlowCardEditor extends HTMLElement {
     const all = this._entities();
     if (mode === 'power') return all.filter(x =>
       x.id.startsWith('sensor.') &&
-      (x.device_class === 'power' || ['w', 'kw', 'mw'].includes(x.unit.trim().toLowerCase())));
+      (x.device_class === 'power' || (!x.device_class && ['w', 'kw', 'mw'].includes(x.unit.trim().toLowerCase()))));
     if (mode === 'energy') return all.filter(x =>
       x.id.startsWith('sensor.') &&
-      (x.device_class === 'energy' || ['wh', 'kwh', 'mwh'].includes(x.unit.trim().toLowerCase())));
+      (x.device_class === 'energy' || (!x.device_class && ['wh', 'kwh', 'mwh'].includes(x.unit.trim().toLowerCase()))));
     if (mode === 'soc') return all.filter(x =>
       x.id.startsWith('sensor.') && (x.device_class === 'battery' || x.unit.trim() === '%'));
     return all;
