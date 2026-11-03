@@ -24,3 +24,4 @@ jobs:
           node --check custom_components/smartify_flow_card/frontend/smartify-flow-card.js
           node tests/test_power_allocation.cjs
           node tests/test_badge_layout.cjs
+          node tests/test_list_sort.cjs
