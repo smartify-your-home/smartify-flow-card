@@ -1,3 +1,12 @@
+## v0.6.7 – Konfigurierbare Linienbreiten und Quellenverteilung (2026-11-03)
+
+- Von der älteren v0.3.0 drei Visualisierungsoptionen übernommen: minimale/maximale Linienbreite (Standard 1,5/4,5 px), Quadratwurzel- oder lineare Breiten-Skalierung und eine optionale proportionale Verteilung von PV, Akku und Netz.
+- **Standard-Quellenverteilung bleibt PV vom kleinsten zum größten Verbraucher** (`allocation: smallest_first`). Proportional (`allocation: proportional`) ist nur eine bewusste Alternative, bei der alle Verbraucher denselben Quellenmix erhalten. Die Berechnung begrenzt Quellenbudgets und Verbrauchsmengen, auch bei Messdifferenzen.
+- Linienbreite folgt konfigurierbarer Skalierung; Standard ist nun `line_scale: sqrt`, sodass kleine Flüsse deutlicher werden. `linear` stellt die bisherige Optik weitgehend wieder her.
+- Gültige Einstellungen: `line_width_min`, `line_width_max`, `line_scale`, `allocation` im visuellen Karteneditor. Wertebereich begrenzt, die maximale Breite wird nicht kleiner als die minimale.
+- Animationen werden bei Wattänderungen weiterhin nicht unnötig neu gestartet. PV-Segmente, Prozentsätze und Flusslinien bleiben konsistent mit der Modellzuordnung. Regressionstests für Budgets, kleine/große Verbindungen und Defaults.
+- Kein vollständiger Browser-Livetest in Home Assistant; insbesondere Radialmodus und iOS nach HACS-Update verifizieren.
+
 ## v0.6.6 – Einheitliche getypte Entitätensuche und visuelle Icon-Auswahl (2026-11-03)
 
 - Plus-/Minus-Verbraucher-Popups verwenden dieselbe komfortable HA-Suche wie der Haupteditor (Name/Entity-ID, Icon, Einheit, Vorschläge, Keyboard, Touch und eigener Scrollgriff). Die Browser-Datalist entfällt.
