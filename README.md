@@ -1,6 +1,6 @@
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.5 · Karte v0.6.5**
+**Integration v0.6.6 · Karte v0.6.6**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -8,7 +8,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.5`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.6`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -30,7 +30,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.5
+/smartify_flow_card/smartify-flow-card.js?v=0.6.6
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -47,7 +47,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.5
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.6
       type: module
 ```
 
@@ -89,7 +89,7 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.5`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.5`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.6`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.6`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 
@@ -104,6 +104,14 @@ Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann
 - **Prozentanzeige:** Keine zusätzlichen Prozent-Badges bei Verbrauchern: Stattdessen sind die individuellen PV-/Akku-/Netz-/offen-Prozentwerte in den farbigen Fußstreifen der jeweiligen Gerätekacheln integriert. Kleine Segmente behalten Farbe und Tooltip, aber keinen überlappenden Text. Geräte-Namen, Leistung und Tagesenergie behalten ihre bisherige Anordnung.
 - **Darstellung:** Klassisches oder Radiallayout mit animierten Kurven, PV-Verbindungen in dunklem Gelb, Theme-Textfarben, 20 % kleineren Einheiten, Theme-Rundungen und einstellbarer Hintergrundtransparenz.
 - **Energiestatistik:** Gesamtenergiezähler werden für Tageswerte verwendet; PV-Eigenverbrauchsquote = `(PV-Ertrag − Einspeisung) / PV-Ertrag × 100`. Bei Akku ist die Autarkie ohne zusätzliche Energiezähler nur eine Näherung.
+
+## Einheitliche Entitäten- und Icon-Suche (ab v0.6.6)
+
+**Alle Entitäten-Picker im Karteneditor und in den Plus-/Minus-Verbraucher-Popups** nutzen dieselbe HA-Vorschlagsliste mit Live-Suche nach Anzeigename und Entity-ID, Einheit, Entitätsicon, Pfeiltasten/Enter und scrollbarerer Vorschlagsliste für Maus und Touch. Die Browser-`datalist` wurde aus den Verbraucherdialogen entfernt. Beim Bearbeiten werden Entitäten im Popup **nur vorgemerkt**; erst „Änderungen speichern“ übernimmt sie in die Lovelace-Kartenkonfiguration.
+
+- **Leistung:** ausschließlich `sensor.*` mit `device_class: power` oder ohne Geräteklasse mit Einheit W, kW oder MW. Andere Sensorarten werden nicht vorgeschlagen oder als Leistungsentität gespeichert.
+- **Energie:** ausschließlich `sensor.*` mit `device_class: energy` oder ohne Geräteklasse mit Einheit Wh, kWh oder MWh. Unpassende Entitäten lassen sich nicht speichern; der Energiezähler bleibt optional.
+- **Icon-Suche für die ganze Karte:** Icon-Felder für PV, Netz, Akku sowie Verbraucher verwenden dieselbe suchbare Vorschlagsliste mit **sichtbaren MDI-Symbolen**. Die Suche versteht Bezeichnungen und `mdi:`-Namen; bekannte Home-Assistant-Icons und ein Katalog mit über 100 häufig genutzten Symbolen stehen bereit. Auch eigene gültige `mdi:icon-name`-Werte sind möglich. Ein benutzerdefiniertes Netzicon ersetzt bei Bedarf das automatisch je Stromrichtung wechselnde Standardsymbol.
 
 ## Verbraucher über Plus/Minus verwalten (ab v0.6.5)
 
