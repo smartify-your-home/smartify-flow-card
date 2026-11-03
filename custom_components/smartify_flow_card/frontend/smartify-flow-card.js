@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.0';
+const SFC_VERSION = '0.6.1';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -393,7 +393,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .source-segment span[hidden]{display:none}
 .source-segment.pv{background:var(--smartify-flow-pv-stripe-color,#e3a600);color:#251e07}
 .source-segment.battery{background:var(--smartify-flow-battery-color,#2e7d32);color:#fff}
-.source-segment.grid{background:var(--secondary-background-color,#d3d3d3);color:var(--primary-text-color,#111)}
+.source-segment.grid{background:var(--c);color:var(--primary-text-color,#111);text-shadow:0 1px 2px var(--card-background-color,#fff),0 -1px 2px var(--card-background-color,#fff)}
+/* Keep each consumer's chosen color as the grid (remaining) share. */
 .source-segment.unassigned{background:var(--sf-track);color:var(--sf-txt)}
 .source-segment + .source-segment{border-left:1px solid color-mix(in srgb,var(--sf-bc) 50%,transparent)}
 
@@ -480,35 +481,62 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       { key: 'grid', name: 'Netz', w: n.gridW || 0 },
       { key: 'unassigned', name: 'offen', w: n.unassignedW || 0 },
     ].filter(x => x.w > 0.01);
-    // Fill only the actual assigned share; never misrepresent missing watts.
-    const fragments = document.createDocumentFragment();
-    for (const item of entries) {
-      const pct = Math.max(0, Math.min(100, 100 * item.w / n.w));
-      const segment = document.createElement('div');
-      segment.className = 'source-segment ' + item.key;
-      segment.style.width = pct + '%';
-      segment.title = `${Math.round(pct)} % ${item.name} · ${this._fmtW(item.w)}`;
-      const label = document.createElement('span');
-      label.textContent = `${Math.round(pct)} % ${item.name}`;
-      segment.append(label);
-      fragments.append(segment);
+
+    // Do not recreate DOM on every sensor update: this made the last
+    // (usually grid) percentage flash while labels were measured.
+    const signature = entries.map(x => x.key).join('|');
+    if (strip.dataset.sources !== signature) {
+      const fragment = document.createDocumentFragment();
+      for (const item of entries) {
+        const segment = document.createElement('div');
+        segment.className = 'source-segment ' + item.key;
+        const label = document.createElement('span');
+        segment.append(label);
+        fragment.append(segment);
+      }
+      strip.replaceChildren(fragment);
+      strip.dataset.sources = signature;
     }
-    strip.replaceChildren(fragments);
-    strip.setAttribute('aria-label', entries.map(item =>
-      `${Math.round(item.w / n.w * 100)} Prozent ${item.name}`
-    ).join(', '));
+
+    const segments = strip.querySelectorAll('.source-segment');
+    entries.forEach((item, index) => {
+      const pct = Math.max(0, Math.min(100, 100 * item.w / n.w));
+      const segment = segments[index];
+      const width = pct + '%';
+      if (segment.style.width !== width) segment.style.width = width;
+      const title = `${Math.round(pct)} % ${item.name} · ${this._fmtW(item.w)}`;
+      if (segment.title !== title) segment.title = title;
+      const label = segment.firstElementChild;
+      const display = `${Math.round(pct)} % ${item.name}`;
+      if (label.textContent !== display) label.textContent = display;
+    });
+    const aria = entries.map(item => `${Math.round(item.w / n.w * 100)} Prozent ${item.name}`).join(', ');
+    if (strip.getAttribute('aria-label') !== aria) strip.setAttribute('aria-label', aria);
   }
 
   _fitSourceLabels() {
     if (!this.shadowRoot) return;
+    // Measure the text itself rather than hide/show/measure scrollWidth.
+    // Use a 6px hysteresis band so sensor noise at the cutoff cannot
+    // repeatedly toggle a label near the edge of a narrow segment.
+    const canvas = this._labelMeasureCanvas || (this._labelMeasureCanvas = document.createElement('canvas'));
+    const context = canvas.getContext('2d');
+    if (!context) return;
     for (const strip of this.shadowRoot.querySelectorAll('.source-strip:not([hidden])')) {
       for (const segment of strip.querySelectorAll('.source-segment')) {
-        const label = segment.querySelector('span');
+        const label = segment.firstElementChild;
         if (!label) continue;
-        label.hidden = false;
-        // Tiny segments keep their color, tooltip and aria information.
-        // Text is hidden rather than overflowing onto adjacent segments.
-        if (segment.clientWidth < label.scrollWidth + 3) label.hidden = true;
+        const computed = getComputedStyle(label);
+        context.font = computed.font;
+        const required = context.measureText(label.textContent || '').width + 10;
+        const available = segment.clientWidth;
+        // A missing font or a collapsed container should not flash labels.
+        if (!available) { label.hidden = true; continue; }
+        if (label.hidden) {
+          if (available > required + 3) label.hidden = false;
+        } else if (available < required - 3) {
+          label.hidden = true;
+        }
       }
     }
   }
