@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.5.5';
+const SFC_VERSION = '0.5.6';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -20,6 +20,29 @@ const SFC_ICON_GUESS = [
   [/licht|spot|leuchte|lampe|rgb|led/i, 'mdi:lightbulb'], [/rollo|shutter|raffstore/i, 'mdi:window-shutter'],
   [/schreibtisch|desk|pc|computer/i, 'mdi:desk'], [/tv|fernseh/i, 'mdi:television'],
 ];
+
+function sfcAllocateSources(candidates, supply) {
+  const allocations = new Map();
+  const remaining = {
+    pv: Math.max(0, Number(supply.pv) || 0),
+    battery: Math.max(0, Number(supply.battery) || 0),
+    grid: Math.max(0, Number(supply.grid) || 0),
+  };
+  const sorted = [...candidates].sort((a, b) => b.w - a.w || a.key.localeCompare(b.key));
+  for (const candidate of sorted) {
+    let need = Math.max(0, Number(candidate.w) || 0);
+    const shares = { pv: 0, battery: 0, grid: 0, unassigned: 0 };
+    for (const source of ['pv', 'battery', 'grid']) {
+      const assigned = Math.min(need, remaining[source]);
+      shares[source] = assigned;
+      remaining[source] -= assigned;
+      need -= assigned;
+    }
+    shares.unassigned = Math.max(0, need);
+    allocations.set(candidate.key, shares);
+  }
+  return allocations;
+}
 
 class SmartifyFlowCard extends HTMLElement {
   static getConfigElement() { return document.createElement('smartify-flow-card-editor'); }
@@ -247,43 +270,38 @@ class SmartifyFlowCard extends HTMLElement {
     if (overflow.length) right.push({ key: '_other', kind: 'load', name: `Sonstige (${overflow.length})`, icon: 'mdi:dots-horizontal-circle-outline', color: SFC_COL.other, w: overflow.reduce((a, x) => a + x.w, 0) });
     const rest = Math.max(total - measured, 0);
     if (c.show_rest && (rest > mp || (keepRest && rest > mp * 0.5))) { right.push({ key: '_rest', kind: 'load', name: c.rest_name, icon: 'mdi:home-outline', color: SFC_COL.rest, w: rest, entity: c.load_total }); this._shown.add('_rest'); }
-    // Priorisierte PV-Zuordnung: größte einzelne Last zuerst (rein visualisiert).
-    // Restlast wird bei der Verteilung berücksichtigt, damit kein PV-Budget
-    // mehrfach verwendet wird. Auch zusammengefasste Lasten werden je
-    // Einzelsensor nach Leistung sortiert, nicht als künstlich große Gruppe.
-    const pvAllocation = new Map();
+    // Alle Stromquellen teilen sich ein jeweils begrenztes Wattbudget.
+    // Größte Einzelverbraucher zuerst; keine Quelle darf doppelt vergeben werden.
     const candidates = list.map(x => ({ key: x.id, w: x.w }));
     if (c.show_rest && right.some(n => n.key === '_rest') && rest > 0) {
       candidates.push({ key: '_rest', w: rest });
     }
-    candidates.sort((a, b2) => b2.w - a.w || a.key.localeCompare(b2.key));
-    let pvRemaining = Math.min(pvL, total);
-    for (const item of candidates) {
-      const assigned = Math.min(item.w, Math.max(0, pvRemaining));
-      pvAllocation.set(item.key, assigned);
-      pvRemaining -= assigned;
-    }
+    const allocations = sfcAllocateSources(candidates, {
+      pv: Math.min(pvL, total), battery: Bd, grid: I,
+    });
+    const sumAllocation = (items, source) =>
+      items.reduce((sum, x) => sum + (allocations.get(x.id)?.[source] || 0), 0);
     for (const n of right) {
-      if (n.kind === 'consumer' || n.key === '_rest') {
-        n.pvW = pvAllocation.get(n.key) || 0;
-      } else if (n.key === '_other') {
-        n.pvW = overflow.reduce((sum, x) => sum + (pvAllocation.get(x.id) || 0), 0);
-      }
-      if (n.pvW !== undefined) n.pvPct = n.w > 0 ? Math.max(0, Math.min(100, n.pvW / n.w * 100)) : 0;
+      const amounts = n.key === '_other'
+        ? Object.fromEntries(['pv', 'battery', 'grid', 'unassigned']
+            .map(k => [k, sumAllocation(overflow, k)]))
+        : allocations.get(n.key);
+      n.pvW = amounts?.pv || 0;
+      n.batteryW = amounts?.battery || 0;
+      n.gridW = amounts?.grid || 0;
+      n.unassignedW = amounts?.unassigned || 0;
+      n.pvPct = n.w > 0 ? 100 * n.pvW / n.w : 0;
+      n.batteryPct = n.w > 0 ? 100 * n.batteryW / n.w : 0;
+      n.gridPct = n.w > 0 ? 100 * n.gridW / n.w : 0;
+      n.unassignedPct = n.w > 0 ? 100 * n.unassignedW / n.w : 0;
     }
 
     const flows = [];
-    const srcKey = { solar: '_solar', battery: '_battery', grid: '_grid' };
     for (const n of right) {
-      // Die PV-Verbindung nutzt exakt dieselbe priorisierte PV-Zuordnung
-      // wie der gelbe Kachelstreifen. Bei 0 W PV-Anteil gibt es keine Linie.
-      // Ein Rest unterhalb der sichtbaren Prozentauflösung bleibt ohne Linie.
-      const solarW = n.pvW || 0;
-      if (solarW > 0.01) flows.push({ from: '_solar', to: n.key, w: solarW });
-      for (const k of ['battery', 'grid']) {
-        const f = n.w * share[k];
-        if (f > c.min_flow && (k !== 'battery' || (b && b.power))) flows.push({ from: srcKey[k], to: n.key, w: f });
-      }
+      // Dieselbe Wattverteilung steuert Linien, Streifen und Prozent-Badge.
+      if (n.pvW > 0.01) flows.push({ from: '_solar', to: n.key, w: n.pvW });
+      if (b && b.power && n.batteryW > 0.01) flows.push({ from: '_battery', to: n.key, w: n.batteryW });
+      if (n.gridW > 0.01) flows.push({ from: '_grid', to: n.key, w: n.gridW });
     }
     if (E > c.min_flow) flows.push({ from: '_solar', to: '_grid', w: E, gridExport: true });
     if (Bc > c.min_flow) flows.push({ from: '_solar', to: '_battery', w: Bc, loop: true });
@@ -332,7 +350,7 @@ ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padd
 .flow.radial .node{position:absolute;box-sizing:border-box;width:148px;max-width:148px;pointer-events:auto;padding:7px 8px calc(8px + var(--sf-accent-h))}
 .flow.radial .node .val{font-size:1.15em}
 .flow.radial .node .nm{font-size:.66em}
-.flow.radial .node .bd{font-size:.53em}
+.flow.radial .node .bd{font-size:calc(.53em + 2px)}
 .flow.radial .node ha-icon{--mdc-icon-size:16px}
 .flow.radial-narrow{display:grid;min-height:0;grid-template-columns:minmax(0,1fr) minmax(32px,.35fr) minmax(0,1fr)}
 .flow.radial-narrow .col{display:flex;position:relative;inset:auto;pointer-events:auto}
@@ -357,8 +375,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .hd{display:flex;align-items:center;gap:6px;min-width:0}
 .hd ha-icon{--mdc-icon-size:18px;color:var(--sf-txt);flex:none}
 .nm{font-weight:800;color:var(--sf-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72em;letter-spacing:.06em;text-transform:uppercase;flex:1;min-width:0}
-.bd{flex:none;font-size:.6em;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
-  background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:nowrap}
+.bd{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;column-gap:7px;row-gap:2px;box-sizing:border-box;width:100%;margin-top:5px;text-align:center;font-family:inherit;font-size:calc(.6em + 2px);font-weight:600;letter-spacing:0;padding:4px 5px;border-radius:var(--sf-r);color:var(--sf-txt);
+  background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:normal;line-height:1.25}
 .bd:empty{display:none}
 .val .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
 .val{font-size:1.55em;font-weight:800;line-height:1.15;margin-top:4px;color:var(--sf-txt);white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -421,8 +439,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 
   _nodeHtml(n) {
     return `<div class="node" data-key="${this._esc(n.key)}" style="--c:${n.color}">
-      <div class="hd"><ha-icon icon="${this._esc(n.icon)}"></ha-icon><span class="nm">${this._esc(n.name)}</span><span class="bd"></span></div>
-      <div class="val"></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div></div>`;
+      <div class="hd"><ha-icon icon="${this._esc(n.icon)}"></ha-icon><span class="nm">${this._esc(n.name)}</span></div>
+      <div class="val"></div><div class="bd"></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div></div>`;
   }
 
   _update() {
@@ -484,40 +502,26 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       if (isLoad) {
         const percent = Math.max(0, Math.min(100, n.pvPct || 0));
         el.style.setProperty('--pv-pct', percent.toFixed(2) + '%');
-        el.title = `PV-Zuordnung: ${this._fmtW(n.pvW || 0)} von ${this._fmtW(n.w)} (${Math.round(percent)} %) – größte Verbraucher zuerst`;
+        el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}; Gesamt ${this._fmtW(n.w)} (größte Verbraucher zuerst)`;
       }
       el.classList.toggle('warn', !!warn);
     };
-    // Die Badge-Prozentzahl muss genau wie PV-Streifen und PV-Linie
-    // aus der priorisierten Zuordnung dieses EINEN Verbrauchers kommen.
-    // Der globale PV-Anteil des gesamten Hauses wäre hier irreführend.
-    const pvLineTargets = new Set(
-      m.flows.filter(f => f.from === '_solar' && f.to !== '_grid' && f.to !== '_battery')
-        .map(f => f.to)
-    );
-    const gridLineTargets = new Set(
-      m.flows.filter(f => f.from === '_grid').map(f => f.to)
-    );
-    const batteryLineTargets = new Set(
-      m.flows.filter(f => f.from === '_battery').map(f => f.to)
-    );
-    const consumerBadge = (n) => {
+    // Prozentwerte unter der Leistung; alle im grauen Feld zentriert.
+    const percentText = (w, total) => {
+      const pct = total > 0 ? 100 * w / total : 0;
+      if (pct > 0 && pct < 0.1) return '<0,1 %';
+      return `${Number(pct.toFixed(1)).toLocaleString('de-DE', {
+        maximumFractionDigits: 1,
+      })} %`;
+    };
+    const consumerBadge = n => {
       if (n.w <= 0) return '';
-      if (pvLineTargets.has(n.key)) {
-        // Kleine, positive Anteile nicht als "0 % PV" ausgeben.
-        const percentage = Math.max(0, Math.min(100, n.pvPct || 0));
-        const digits = percentage < 10 ? 1 : 0;
-        return `${percentage.toLocaleString('de-DE', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: digits,
-        })} % PV`;
-      }
-      // Ohne PV-Linie niemals einen berechneten PV-Prozentwert anzeigen.
-      if (n.w <= mf) return '';
-      if (n.activeBadge && !/[0-9]+(?:[.,][0-9]+)?\s*%\s*PV/i.test(n.activeBadge)) return n.activeBadge;
-      if (gridLineTargets.has(n.key)) return 'NETZ';
-      if (batteryLineTargets.has(n.key)) return 'AKKU';
-      return '';
+      const parts = [];
+      if (n.pvW > 0.01) parts.push(`${percentText(n.pvW, n.w)} PV`);
+      if (n.batteryW > 0.01) parts.push(`${percentText(n.batteryW, n.w)} Akku`);
+      if (n.gridW > 0.01) parts.push(`${percentText(n.gridW, n.w)} Netz`);
+      if (n.unassignedW > 0.01) parts.push(`${percentText(n.unassignedW, n.w)} offen`);
+      return parts.join(' · ');
     };
     for (const n of m.left) {
       if (n.kind === 'solar') {
