@@ -362,6 +362,7 @@ ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padd
 .flow.radial .col{display:block;position:absolute;inset:0;pointer-events:none}
 .flow.radial .col.left,.flow.radial .col.right{grid-column:auto}
 .flow.radial .node{position:absolute;box-sizing:border-box;width:148px;max-width:148px;pointer-events:auto;padding:7px 8px calc(8px + var(--sf-accent-h))}
+.flow.radial .node.has-source-strip{padding-bottom:calc(8px + var(--sf-source-height,22px))}
 .flow.radial .node .val{font-size:1.15em}
 .flow.radial .node .nm{font-size:.66em}
 .flow.radial .node .bd{font-size:.655em}
