@@ -1,3 +1,12 @@
+## v0.6.4 – Quellenkacheln per Ziehgriff umsortieren (2026-11-03)
+
+- PV-, Akku- und Netzkacheln unter **Darstellung & Animation** frei umreihen: Ziehgriff für Touch und Maus, Auf/Ab-Schaltflächen sowie Tastaturpfeile.
+- Reihenfolge wird erst beim Loslassen bzw. nach einer Tastenaktion als `source_order` in der Lovelace-Konfiguration gespeichert, nicht bei jedem Pointer- oder Sensorupdate.
+- Die gespeicherte Reihung gilt für klassische und radiale Ansicht; Dashboard-Klicks öffnen weiterhin Entitätsdetails und lösen kein unbeabsichtigtes Verschieben aus.
+- Abwärtskompatibel: ohne `source_order` PV → Akku → Netz; ohne Batteriesensor nur die vorhandenen Quellen anzeigen.
+- PV-Priorität, Quellenbudgets und Flusslinien bleiben unverändert. Regressionstest für Up/Down, Touch, Tastatur, Duplikate und fehlenden Akku.
+- Echter Home-Assistant-Test auf iPhone/iPad/PC steht noch aus.
+
 ## v0.6.3 – PV zuerst an kleine Verbraucher (2026-11-03)
 
 - PV-Budget wird nun **aufsteigend nach Verbraucherleistung** verteilt: kleinster Einzelverbraucher zuerst, größter zuletzt.
