@@ -1,3 +1,9 @@
+## v0.6.8 – Verbraucher-Popup ohne automatisch geöffnetes Power-Dropdown (2026-11-03)
+
+- Der Dialog öffnet nach Plus/Minus mit geschlossenem Leistungsentitäten-Dropdown. Der automatische Fokus auf das Suchfeld wird durch Fokus auf die Dialogüberschrift ersetzt.
+- Die Power-Suche samt Filter, Vorschlägen, Touch-Scrolling und Tastaturbedienung wird erst bei aktiver Auswahl des Suchfelds geöffnet. Keine Änderung der Entitäten, Zuteilungsmodelle oder bestehenden Konfigurationen.
+- Regressionstest schützt vor erneut eingeführtem Autofokus. Home-Assistant-Livetest noch ausstehend.
+
 ## v0.6.7 – Konfigurierbare Linienbreiten und Quellenverteilung (2026-11-03)
 
 - Von der älteren v0.3.0 drei Visualisierungsoptionen übernommen: minimale/maximale Linienbreite (Standard 1,5/4,5 px), Quadratwurzel- oder lineare Breiten-Skalierung und eine optionale proportionale Verteilung von PV, Akku und Netz.
