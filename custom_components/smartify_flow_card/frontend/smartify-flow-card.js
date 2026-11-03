@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.3';
+const SFC_VERSION = '0.6.4';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -23,6 +23,25 @@ const SFC_ICON_GUESS = [
 
 // List view: sort both individual devices and aggregated/unknown loads by
 // current total power; stable key order prevents jitter when values are equal.
+const SFC_SOURCE_KEYS = ['_solar', '_battery', '_grid'];
+function sfcSourceOrder(order, available = SFC_SOURCE_KEYS) {
+  const valid = new Set(available.filter(key => SFC_SOURCE_KEYS.includes(key)));
+  const seen = new Set();
+  const requested = Array.isArray(order) ? order : [];
+  return [...requested, ...SFC_SOURCE_KEYS].filter(key => {
+    if (!valid.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function sfcMoveSource(order, key, target) {
+  const next = sfcSourceOrder(order);
+  if (!next.includes(key) || !next.includes(target) || key === target) return next;
+  next.splice(next.indexOf(key), 1);
+  next.splice(next.indexOf(target), 0, key);
+  return next;
+}
+
 function sfcSortLoadTiles(tiles) {
   return [...tiles].sort((a, b) =>
     (b.w - a.w) || String(a.key).localeCompare(String(b.key))
@@ -285,6 +304,10 @@ class SmartifyFlowCard extends HTMLElement {
       icon: gridState === 'import' ? 'mdi:transmission-tower-export' : gridState === 'export' ? 'mdi:transmission-tower-import' : 'mdi:transmission-tower',
       color: SFC_COL.grid, w: gridState === 'import' ? I : gridState === 'export' ? E : 0,
       entity: hasBalance ? g.saldo_power : (gridState === 'export' ? g.export_power : g.import_power) });
+    // Persisted source order affects only visualization, not energy attribution.
+    const orderedLeft = sfcSourceOrder(c.source_order, left.map(n => n.key))
+      .map(key => left.find(n => n.key === key));
+    left.splice(0, left.length, ...orderedLeft);
 
     const right = shown.map((x) => {
       const name = this._name(x.id), ov = this._ov(x.id);
@@ -1300,6 +1323,110 @@ class SmartifyFlowCardEditor extends HTMLElement {
     hint.textContent = '0 % = undurchsichtig, 100 % = vollständig transparent. Gerätekacheln bleiben für gute Lesbarkeit unverändert.';
     wrap.append(label, row, hint); section.append(wrap);
   }
+  _sourceOrderControl(section) {
+    const wrap = document.createElement('div'); wrap.className = 'field';
+    const label = document.createElement('label');
+    label.textContent = 'Reihenfolge der Quellenkacheln (oben → unten)';
+    const hint = document.createElement('small');
+    hint.textContent = 'Am Griff ziehen (Maus oder Touch) oder mit ↑ / ↓ verschieben. Änderungen gelten im klassischen und radialen Layout und werden mit der Karte gespeichert.';
+    const list = document.createElement('div'); list.className = 'source-order-list';
+    const names = { _solar: 'PV', _battery: 'Akku', _grid: 'Netz' };
+    const icons = { _solar: 'mdi:solar-power', _battery: 'mdi:home-battery', _grid: 'mdi:transmission-tower' };
+    const hasBattery = !!this._config.battery?.power;
+    const available = hasBattery ? SFC_SOURCE_KEYS : SFC_SOURCE_KEYS.filter(key => key !== '_battery');
+    let order = sfcSourceOrder(this._config.source_order, available);
+    let dragging = null;
+    const save = next => {
+      const complete = sfcSourceOrder(next);
+      const old = sfcSourceOrder(this._config.source_order);
+      if (complete.join('|') === old.join('|')) return;
+      this._config.source_order = complete;
+      this._emit();
+    };
+    const render = () => {
+      list.replaceChildren();
+      order.forEach((key, index) => {
+        const item = document.createElement('div');
+        item.className = 'source-order-row';
+        item.dataset.key = key;
+        const grip = document.createElement('button');
+        grip.type = 'button'; grip.className = 'source-order-grip';
+        grip.setAttribute('aria-label', names[key] + ' verschieben');
+        grip.setAttribute('title', names[key] + ' ziehen');
+        const glyph = document.createElement('ha-icon');
+        glyph.setAttribute('icon', 'mdi:drag-vertical');
+        grip.append(glyph);
+        const sourceIcon = document.createElement('ha-icon');
+        sourceIcon.setAttribute('icon', icons[key]);
+        const name = document.createElement('span'); name.textContent = names[key];
+        const controls = document.createElement('div'); controls.className = 'source-order-actions';
+        for (const [direction, caption, icon] of [[-1, 'Nach oben', 'mdi:chevron-up'], [1, 'Nach unten', 'mdi:chevron-down']]) {
+          const btn = document.createElement('button'); btn.type = 'button';
+          btn.disabled = index + direction < 0 || index + direction >= order.length;
+          btn.setAttribute('aria-label', names[key] + ': ' + caption);
+          const symbol = document.createElement('ha-icon'); symbol.setAttribute('icon', icon);
+          btn.append(symbol);
+          btn.addEventListener('click', () => {
+            const position = order.indexOf(key), next = position + direction;
+            if (next < 0 || next >= order.length) return;
+            order = sfcMoveSource(order, key, order[next]);
+            render();
+            save(order);
+            list.querySelector(`[data-key="${key}"] .source-order-grip`)?.focus();
+          });
+          controls.append(btn);
+        }
+        // Grip is also keyboard-accessible without depending on HTML5 drag/drop.
+        grip.addEventListener('keydown', e => {
+          if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+          e.preventDefault();
+          const position = order.indexOf(key), next = position + (e.key === 'ArrowUp' ? -1 : 1);
+          if (next < 0 || next >= order.length) return;
+          order = sfcMoveSource(order, key, order[next]);
+          render(); save(order);
+          list.querySelector(`[data-key="${key}"] .source-order-grip`)?.focus();
+        });
+        grip.addEventListener('pointerdown', e => {
+          if (e.button !== 0 && e.pointerType === 'mouse') return;
+          e.preventDefault();
+          dragging = { key, id: e.pointerId, y: e.clientY, moved: false };
+          grip.setPointerCapture(e.pointerId);
+          item.classList.add('dragging');
+        });
+        grip.addEventListener('pointermove', e => {
+          if (!dragging || dragging.id !== e.pointerId || dragging.key !== key) return;
+          if (Math.abs(e.clientY - dragging.y) > 5) dragging.moved = true;
+          if (!dragging.moved) return;
+          const target = [...list.children].find(row => {
+            const rect = row.getBoundingClientRect();
+            return e.clientY >= rect.top && e.clientY < rect.bottom;
+          });
+          for (const row of list.children) row.classList.toggle('drop-target', row === target && row !== item);
+        });
+        const finish = e => {
+          if (!dragging || dragging.id !== e.pointerId || dragging.key !== key) return;
+          const wasMoved = dragging.moved;
+          const target = wasMoved ? [...list.children].find(row => {
+            const rect = row.getBoundingClientRect();
+            return e.clientY >= rect.top && e.clientY < rect.bottom;
+          }) : null;
+          dragging = null;
+          item.classList.remove('dragging');
+          for (const row of list.children) row.classList.remove('drop-target');
+          if (grip.hasPointerCapture?.(e.pointerId)) grip.releasePointerCapture(e.pointerId);
+          if (e.type === 'pointercancel' || !target || target === item) return;
+          order = sfcMoveSource(order, key, target.dataset.key);
+          render(); save(order);
+        };
+        grip.addEventListener('pointerup', finish);
+        grip.addEventListener('pointercancel', finish);
+        item.append(grip, sourceIcon, name, controls); list.append(item);
+      });
+    };
+    render();
+    wrap.append(label, list, hint); section.append(wrap);
+  }
+
   _fontScaleControl(section) {
     const wrap = document.createElement('div'); wrap.className = 'field';
     const label = document.createElement('label');
@@ -1356,6 +1483,17 @@ class SmartifyFlowCardEditor extends HTMLElement {
       .toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--divider-color)}
       .consumer{padding:12px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);margin:10px 0;background:var(--secondary-background-color)}
       .consumer-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;overflow-wrap:anywhere}.consumer-head b{font-size:12px}
+      .source-order-list{display:flex;flex-direction:column;gap:6px}
+      .source-order-row{display:flex;align-items:center;gap:9px;padding:5px 8px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);min-height:42px}
+      .source-order-row>span{flex:1;font-weight:600}
+      .source-order-row.dragging{border-color:var(--primary-color);opacity:.7}
+      .source-order-row.drop-target{outline:2px solid var(--primary-color);outline-offset:-2px}
+      .source-order-grip,.source-order-actions button{width:38px;height:38px;border:0;background:transparent;color:var(--primary-text-color);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:var(--sf-editor-radius);padding:0}
+      .source-order-grip{touch-action:none;cursor:grab;user-select:none}
+      .source-order-grip:active{cursor:grabbing}
+      .source-order-grip:focus-visible,.source-order-actions button:focus-visible{outline:2px solid var(--primary-color)}
+      .source-order-actions{display:flex;align-items:center;gap:2px}
+      .source-order-actions button:disabled{opacity:.3;cursor:default}
       .backup-note{font-size:12px;color:var(--secondary-text-color);line-height:1.5}
       .backup-json{box-sizing:border-box;width:100%;min-height:125px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:10px;background:var(--secondary-background-color);color:var(--primary-text-color);font:12px monospace;resize:vertical}
       .backup-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
@@ -1406,6 +1544,7 @@ class SmartifyFlowCardEditor extends HTMLElement {
     sec = this._section('Darstellung & Animation', 'mdi:tune-variant');
     this._input(sec,'Kartentitel',['title']);
     this._select(sec,'Anordnung der Kacheln',['layout'], [['classic','Klassisch – Quellen links, Verbraucher rechts'],['radial','Radial – Quellen in der Mitte, Verbraucher rundherum']], 'classic');
+    this._sourceOrderControl(sec);
     this._transparencyControl(sec);
     this._fontScaleControl(sec);
     for (const [title,key] of [
