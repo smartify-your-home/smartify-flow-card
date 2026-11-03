@@ -39,6 +39,7 @@ jobs:
           node tests/test_power_allocation.cjs
           node tests/test_badge_layout.cjs
           node tests/test_list_sort.cjs
+          node tests/test_font_scale.cjs
       - name: Publish immutable version tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
