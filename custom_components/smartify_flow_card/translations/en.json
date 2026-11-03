@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Smartify Flow Card",
+        "description": "Serves the card JavaScript and registers its Lovelace resource automatically. Existing dashboard and consumer configuration is preserved."
+      }
+    },
+    "abort": {
+      "already_configured": "Smartify Flow Card is already configured."
+    }
+  }
+}

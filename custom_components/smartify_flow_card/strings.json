@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Smartify Flow Card einrichten",
+        "description": "Installiert die JavaScript-Karte und registriert ihre Lovelace-Ressource automatisch. Vorhandene Dashboards und Verbraucher bleiben erhalten."
+      }
+    },
+    "abort": {
+      "already_configured": "Die Smartify Flow Card ist bereits eingerichtet."
+    }
+  }
+}
