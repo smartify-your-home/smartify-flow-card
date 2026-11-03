@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.9';
+const SFC_VERSION = '0.6.8';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -1694,17 +1694,17 @@ class SmartifyFlowCardEditor extends HTMLElement {
     this._ready = true;
     this._pickers = [];
     this.shadowRoot.innerHTML = `<style>
-      :host{display:block;color:var(--primary-text-color);font:inherit;--sf-editor-radius:var(--ha-card-border-radius,12px);--sf-editor-opaque-bg:var(--ha-card-background,var(--card-background-color,#fff));background-color:var(--sf-editor-opaque-bg);isolation:isolate}
+      :host{display:block;color:var(--primary-text-color);font:inherit;--sf-editor-radius:var(--ha-card-border-radius,12px)}
       .intro{padding:12px 14px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);margin-bottom:12px;background:var(--secondary-background-color)}
       .intro b{display:block;margin-bottom:2px}.intro small{color:var(--secondary-text-color)}
-      section{border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:14px;margin:10px 0;background:var(--sf-editor-opaque-bg)}
+      section{border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:14px;margin:10px 0;background:var(--card-background-color)}
       h3{display:flex;gap:9px;align-items:center;font-size:15px;margin:0 0 14px}h3 ha-icon{color:var(--primary-color)}
       .field{margin:0 0 12px;min-width:0}.field>label{display:block;font-size:12px;font-weight:650;margin-bottom:6px;color:var(--secondary-text-color)}
       .field>small{display:block;margin-top:4px;color:var(--secondary-text-color);font-size:11px}
       input:not([type=checkbox]){display:block;box-sizing:border-box;width:100%;min-height:43px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);color:var(--primary-text-color);font:inherit;padding:9px 11px;outline:none}
       input:focus{border-color:var(--primary-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary-color) 18%,transparent)}
       input[type=checkbox]{accent-color:var(--primary-color);width:20px;height:20px}
-      .icon-picker{display:flex;align-items:center}.icon-picker .icon-preview{flex:none;--mdc-icon-size:27px;margin-right:8px;color:var(--primary-text-color)}.icon-picker input{flex:1;min-width:0}.picker{position:relative}.picker:focus-within{z-index:100}.suggestions{position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:30;height:270px;max-height:min(270px,45vh);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:none;border-radius:var(--sf-editor-radius);background:var(--sf-editor-opaque-bg);border:1px solid var(--divider-color);box-shadow:0 8px 26px #0003}
+      .icon-picker{display:flex;align-items:center}.icon-picker .icon-preview{flex:none;--mdc-icon-size:27px;margin-right:8px;color:var(--primary-text-color)}.icon-picker input{flex:1;min-width:0}.picker{position:relative}.picker:focus-within{z-index:100}.suggestions{position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:30;height:270px;max-height:min(270px,45vh);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:none;border-radius:var(--sf-editor-radius);background:var(--card-background-color);border:1px solid var(--divider-color);box-shadow:0 8px 26px #0003}
       .suggestions::-webkit-scrollbar{display:none}
       .suggestions-track{position:absolute;z-index:31;top:calc(100% + 9px);right:4px;height:calc(min(270px,45vh) - 12px);width:14px;border-radius:var(--sf-editor-radius);background:color-mix(in srgb,var(--divider-color) 35%,transparent);touch-action:none;cursor:pointer;user-select:none}
       .suggestions-track[hidden]{display:none}
@@ -1725,7 +1725,7 @@ class SmartifyFlowCardEditor extends HTMLElement {
       .consumer-manager-add,.consumer-manager-minus{display:grid;place-items:center;flex:none;width:32px;height:32px;padding:0;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);color:var(--primary-text-color);cursor:pointer}
       .consumer-manager-add{background:var(--primary-color);color:var(--text-primary-color,#fff)}
       .consumer-modal-overlay{position:fixed;inset:0;z-index:500;background:#0009;display:grid;place-items:center;padding:12px}
-      .consumer-modal{box-sizing:border-box;width:min(100%,440px);max-height:90vh;overflow-y:auto;background:var(--sf-editor-opaque-bg);opacity:1;color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:18px;box-shadow:0 8px 30px #0004}
+      .consumer-modal{box-sizing:border-box;width:min(100%,440px);max-height:90vh;overflow-y:auto;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:18px;box-shadow:0 8px 30px #0004}
       .consumer-modal-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
       .consumer-modal-actions button{border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:9px;cursor:pointer;background:var(--secondary-background-color);color:var(--primary-text-color)}
       .consumer-modal-actions .consumer-modal-save{background:var(--primary-color);color:var(--text-primary-color,#fff)}
