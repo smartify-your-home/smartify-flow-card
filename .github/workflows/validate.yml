@@ -30,3 +30,4 @@ jobs:
           node tests/test_source_order.cjs
           node tests/test_consumer_modal.cjs
           node tests/test_picker_types.cjs
+          node tests/test_allocation_visuals.cjs
