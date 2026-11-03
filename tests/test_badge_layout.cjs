@@ -8,7 +8,7 @@ assert.match(code, /<span class="nm">\$\{this\._esc\(n\.name\)\}<\/span><span cl
   'the badge remains inside the title header, at the top right');
 assert.match(code, /<div class="val"><\/div><div class="sub"><\/div>/,
   'the badge is no longer placed between power and energy values');
-const style = code.match(/\.bd\{([^}]*)\}/)?.[1] || '';
+const style = code.match(/(?:^|\n)\.bd\{([^}]*)\}/)?.[1] || '';
 assert.match(style, /width:auto/, 'the badge has intrinsic width, not a full-width bar');
 assert.doesNotMatch(style, /width:100%/, 'the badge must never span the full tile');
 assert.match(style, /white-space:pre/, 'each source remains on its own line');
