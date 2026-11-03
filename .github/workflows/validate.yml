@@ -19,5 +19,7 @@ jobs:
         run: python scripts/check_version.py
       - name: Compile Python
         run: python -m compileall -q custom_components
-      - name: Check JavaScript syntax
-        run: node --check custom_components/smartify_flow_card/frontend/smartify-flow-card.js
+      - name: Check JavaScript syntax and allocation regressions
+        run: |
+          node --check custom_components/smartify_flow_card/frontend/smartify-flow-card.js
+          node tests/test_power_allocation.cjs
