@@ -12,7 +12,9 @@ assert.match(code, /this\._updateSourceStrip\(strip, n\)/, 'segments are populat
 assert.match(code, /this\._fitSourceLabels\(\)/, 'tiny segment labels are measured before display');
 assert.match(code, /label\.hidden = true/, 'tiny segments cannot overlap adjacent labels');
 assert.match(code, /Math\.round\(pct\)/, 'percentage labels are rounded to zero decimals');
-assert.match(code, /el\.querySelector\('\.bd'\)\.textContent = isSourceConsumer\(n\) \? ''/, 'consumer header badge is empty');
+assert.match(code, /isSourceConsumer\(n\) \? \(useStrip \? '' : this\._consumerBadge\(n, mf\)\)/, 'consumer badge only in badge mode');
+assert.match(code, /<div class="vr"><div class="val"><\/div><span class="bd"><\/span><\/div>/, 'badge sits in the value row, not next to the name');
+assert.match(code, /source_display: 'badge'/, 'badge display is the default');
 assert.match(code, /\.source-segment\.grid\{background:var\(--c\)/, 'grid segment uses the individual device color');
 assert.match(code, /strip\.dataset\.sources !== signature/, 'rebuild segments only when source identities change');
 assert.match(code, /if \(label\.textContent !== display\)/, 'avoid unnecessary label writes');

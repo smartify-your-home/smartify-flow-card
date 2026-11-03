@@ -1,3 +1,9 @@
+## v0.6.9 – Quellen-Badge in der Wertzeile (2026-11-03)
+
+- Verbraucher zeigen die Quellenanteile wieder als kompaktes Badge (wie bis v0.3.0), jetzt auf Höhe des Leistungswerts statt neben dem Namen.
+- Neue Option `source_display`: `badge` (Standard) oder `strip` (farbiger Prozent-Fußstreifen wie v0.6.x).
+- Badges der Quellenkacheln (Prognose, Akku, Netz-Limit) sitzen ebenfalls in der Wertzeile.
+
 ## v0.6.8 – Verbraucher-Popup ohne automatisch geöffnetes Power-Dropdown (2026-11-03)
 
 - Der Dialog öffnet nach Plus/Minus mit geschlossenem Leistungsentitäten-Dropdown. Der automatische Fokus auf das Suchfeld wird durch Fokus auf die Dialogüberschrift ersetzt.

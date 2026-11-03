@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.8';
+const SFC_VERSION = '0.6.9';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -132,7 +132,7 @@ class SmartifyFlowCard extends HTMLElement {
       label: 'verbraucher', layout: 'classic', min_power: 10, hide_below_display_power: false, max_consumers: 8, min_flow: 5, idle_power: 5,
       show_stats: true, show_rest: true, rest_name: 'Nicht erfasst',
       max_expected_power_kw: 10, speed_multiplier: 1, font_scale: 1, background_transparency: 0,
-      allocation: 'smallest_first', line_width_min: 1.5, line_width_max: 4.5, line_scale: 'sqrt',
+      source_display: 'badge', allocation: 'smallest_first', line_width_min: 1.5, line_width_max: 4.5, line_scale: 'sqrt',
       contract_power_limit_kw: null, contract_warning_pct: 0.85,
       line_speeds: {}, max_width: 900,
     }, config);
@@ -449,7 +449,7 @@ ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padd
 .flow.radial .node.has-source-strip{padding-bottom:calc(8px + var(--sf-source-height,22px))}
 .flow.radial .node .val{font-size:1.15em}
 .flow.radial .node .nm{font-size:.66em}
-.flow.radial .node .bd{font-size:.655em}
+.flow.radial .node .bd{font-size:.55em}
 .flow.radial .node ha-icon{--mdc-icon-size:16px}
 .flow.radial-narrow{display:grid;min-height:0;grid-template-columns:minmax(0,1fr) minmax(32px,.35fr) minmax(0,1fr)}
 .flow.radial-narrow .col{display:flex;position:relative;inset:auto;pointer-events:auto}
@@ -487,8 +487,11 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .hd{display:flex;align-items:center;gap:6px;min-width:0}
 .hd ha-icon{--mdc-icon-size:18px;color:var(--sf-txt);flex:none}
 .nm{font-weight:800;color:var(--sf-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72em;letter-spacing:.06em;text-transform:uppercase;flex:1;min-width:0}
-.bd{flex:none;box-sizing:border-box;width:auto;max-width:56%;margin:0;text-align:left;align-self:center;font-family:inherit;font-size:.725em;font-weight:600;letter-spacing:0;padding:2px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
-  background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:pre;line-height:1.25}
+/* Badge sitzt in der Wertzeile (rechts neben dem Leistungswert), nicht beim Namen. */
+.vr{display:flex;align-items:center;gap:6px;margin-top:4px;min-width:0}
+.vr .val{margin-top:0;flex:0 1 auto;min-width:0}
+.bd{flex:0 1 auto;box-sizing:border-box;max-width:60%;margin-left:auto;font-family:inherit;font-size:.6em;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
+  background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
 .bd:empty{display:none}
 .val .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
 .val{font-size:1.55em;font-weight:800;line-height:1.15;margin-top:4px;color:var(--sf-txt);white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -549,10 +552,29 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     if (this._ro) this._ro.observe(this._flowEl);
   }
 
+  // Kompaktes Quellen-Badge wie bis v0.3.0: "100% PV", "Netz", "60% PV" …
+  _consumerBadge(n, mf) {
+    if (!(n.w > mf)) return '';
+    const pv = n.pvW || 0, bat = n.batteryW || 0, grid = n.gridW || 0;
+    const tot = pv + bat + grid;
+    let src = '';
+    if (tot > 0) {
+      const pvP = Math.round(pv / tot * 100), batP = Math.round(bat / tot * 100), gridP = Math.round(grid / tot * 100);
+      if (pvP >= 99) src = '100% PV';
+      else if (batP >= 99) src = '100% Akku';
+      else if (gridP >= 99) src = 'Netz';
+      else if (pvP && batP) src = `${pvP}% PV + Akku`;
+      else if (batP) src = `${batP}% Akku`;
+      else src = `${pvP}% PV`;
+    }
+    if (n.activeBadge) return src ? `${n.activeBadge} · ${src}` : n.activeBadge;
+    return src;
+  }
+
   _nodeHtml(n) {
     return `<div class="node" data-key="${this._esc(n.key)}" style="--c:${n.color}">
-      <div class="hd"><ha-icon icon="${this._esc(n.icon)}"></ha-icon><span class="nm">${this._esc(n.name)}</span><span class="bd"></span></div>
-      <div class="val"></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div><div class="source-strip" hidden></div></div>`;
+      <div class="hd"><ha-icon icon="${this._esc(n.icon)}"></ha-icon><span class="nm">${this._esc(n.name)}</span></div>
+      <div class="vr"><div class="val"></div><span class="bd"></span></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div><div class="source-strip" hidden></div></div>`;
   }
 
   // Gleiche W-Zuordnung wie bei den animierten Flusslinien.
@@ -715,12 +737,15 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         requestAnimationFrame(fit);
       }
 
-      // Quellenanteile bei Verbrauchern im unteren Streifen statt im Kopf-Badge.
-      el.querySelector('.bd').textContent = isSourceConsumer(n) ? '' : (badge || '');
+      // Quellenanteile: Standard = Badge in der Wertzeile, optional Farbstreifen unten (source_display: strip).
+      const useStrip = this._c.source_display === 'strip';
+      const bdText = isSourceConsumer(n) ? (useStrip ? '' : this._consumerBadge(n, mf)) : (badge || '');
+      const bdEl = el.querySelector('.bd');
+      if (bdEl.textContent !== bdText) bdEl.textContent = bdText;
       const b = el.querySelector('.bar'); b.classList.toggle('hide', bar == null);
       if (bar != null) b.firstElementChild.style.width = Math.max(0, Math.min(100, bar)) + '%';
       el.classList.toggle('idle', n.w <= mf);
-      const isLoad = isSourceConsumer(n);
+      const isLoad = isSourceConsumer(n) && useStrip;
       el.classList.toggle('has-source-strip', isLoad);
       const strip = el.querySelector('.source-strip');
       strip.hidden = !isLoad || n.w <= 0;
@@ -730,6 +755,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         } else {
           strip.replaceChildren();
         }
+      }
+      if (isSourceConsumer(n)) {
         el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (PV: kleinste Verbraucher zuerst)`;
       }
       el.classList.toggle('warn', !!warn);
@@ -1797,6 +1824,10 @@ class SmartifyFlowCardEditor extends HTMLElement {
     this._input(sec,'Kartentitel',['title']);
     this._select(sec,'Anordnung der Kacheln',['layout'], [['classic','Klassisch – Quellen links, Verbraucher rechts'],['radial','Radial – Quellen in der Mitte, Verbraucher rundherum']], 'classic');
     this._sourceOrderControl(sec);
+    this._select(sec, 'Anzeige der Quellenanteile bei Verbrauchern', ['source_display'], [
+      ['badge', 'Badge neben dem Leistungswert (Standard)'],
+      ['strip', 'Farbiger Streifen unten in der Kachel'],
+    ], 'badge');
     this._select(sec, 'Quellenverteilung (Visualisierungsmodell)', ['allocation'], [
       ['smallest_first', 'PV vom kleinsten zum größten Verbraucher (Standard)'],
       ['proportional', 'Proportional – gleicher PV/Akku/Netz-Mix pro Verbraucher'],
