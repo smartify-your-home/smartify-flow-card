@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.5.8';
+const SFC_VERSION = '0.5.9';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -20,6 +20,14 @@ const SFC_ICON_GUESS = [
   [/licht|spot|leuchte|lampe|rgb|led/i, 'mdi:lightbulb'], [/rollo|shutter|raffstore/i, 'mdi:window-shutter'],
   [/schreibtisch|desk|pc|computer/i, 'mdi:desk'], [/tv|fernseh/i, 'mdi:television'],
 ];
+
+// List view: sort both individual devices and aggregated/unknown loads by
+// current total power; stable key order prevents jitter when values are equal.
+function sfcSortLoadTiles(tiles) {
+  return [...tiles].sort((a, b) =>
+    (b.w - a.w) || String(a.key).localeCompare(String(b.key))
+  );
+}
 
 function sfcAllocateSources(candidates, supply) {
   const allocations = new Map();
@@ -294,6 +302,12 @@ class SmartifyFlowCard extends HTMLElement {
       n.batteryPct = n.w > 0 ? 100 * n.batteryW / n.w : 0;
       n.gridPct = n.w > 0 ? 100 * n.gridW / n.w : 0;
       n.unassignedPct = n.w > 0 ? 100 * n.unassignedW / n.w : 0;
+    }
+
+    // Sonstige and Nicht erfasst compete equally with named consumers.
+    // Preserve radial layout's ring ordering; only classic list is re-sorted.
+    if (c.layout !== 'radial') {
+      right.splice(0, right.length, ...sfcSortLoadTiles(right));
     }
 
     const flows = [];
