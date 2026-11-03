@@ -1,0 +1,26 @@
+// Source ordering must persist and be independent of power/flow allocation.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const code = fs.readFileSync(path.join(__dirname, '..', 'custom_components', 'smartify_flow_card', 'frontend', 'smartify-flow-card.js'), 'utf8');
+const begin = code.indexOf("const SFC_SOURCE_KEYS = ");
+const end = code.indexOf("\nfunction sfcSortLoadTiles", begin);
+assert.ok(begin >= 0 && end > begin, 'source-order helper exists');
+const {normalize, move} = vm.runInNewContext(code.slice(begin, end) + '\n({normalize:sfcSourceOrder,move:sfcMoveSource})');
+const arr = a => Array.from(a);
+assert.deepEqual(arr(normalize(undefined)), ['_solar','_battery','_grid']);
+assert.deepEqual(arr(normalize(['_grid','_solar','_battery'])), ['_grid','_solar','_battery']);
+assert.deepEqual(arr(normalize(['_grid','_grid','bad','_solar'])), ['_grid','_solar','_battery']);
+assert.deepEqual(arr(normalize(['_battery','_grid','_solar'],['_solar','_grid'])),['_grid','_solar']);
+assert.deepEqual(arr(move(['_solar','_battery','_grid'],'_solar','_battery')),['_battery','_solar','_grid'],'down works');
+assert.deepEqual(arr(move(['_solar','_battery','_grid'],'_grid','_solar')),['_grid','_solar','_battery'],'up works');
+assert.deepEqual(arr(move(['_solar','_battery','_grid'],'_battery','_battery')),['_solar','_battery','_grid'],'no-op');
+assert.match(code,/sfcSourceOrder\(c\.source_order, left\.map\(n => n\.key\)\)/,'card consumes persisted ordering');
+assert.match(code,/_sourceOrderControl\(section\)/,'configuration editor has source reorder control');
+assert.match(code,/grip\.setPointerCapture\(e\.pointerId\)/,'touch pointer capture');
+assert.match(code,/grip\.addEventListener\('pointercancel', finish\)/,'cancel does not commit');
+assert.match(code,/grip\.addEventListener\('keydown'/,'keyboard accessible');
+assert.match(code,/this\._config\.source_order = complete/,'ordering persisted in config');
+assert.match(code, /this\._sourceOrderControl\(sec\)/, 'control displayed in the editor');
+console.log('Source ordering and editor interaction regression checks passed');
