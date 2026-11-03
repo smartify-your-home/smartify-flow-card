@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.6';
+const SFC_VERSION = '0.6.7';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -87,6 +87,38 @@ function sfcAllocateSources(candidates, supply) {
   return allocations;
 }
 
+
+/**
+ * Proportional model: every consumer gets the same modeled source mixture.
+ * Scale demand to available supply first, so no input budget is overspent and
+ * no consumer receives more watts than its measured demand.
+ */
+function sfcAllocateProportional(candidates, supply) {
+  const budgets = ['pv', 'battery', 'grid'].map(key => Math.max(0, Number(supply[key]) || 0));
+  const totalSupply = budgets.reduce((sum, w) => sum + w, 0);
+  const consumers = candidates.map(c => ({ key: c.key, w: Math.max(0, Number(c.w) || 0) }));
+  const totalDemand = consumers.reduce((sum, c) => sum + c.w, 0);
+  const servedRatio = totalDemand > 0 ? Math.min(1, totalSupply / totalDemand) : 0;
+  return new Map(consumers.map(c => {
+    const served = c.w * servedRatio;
+    const shares = {
+      pv: totalSupply > 0 ? served * budgets[0] / totalSupply : 0,
+      battery: totalSupply > 0 ? served * budgets[1] / totalSupply : 0,
+      grid: totalSupply > 0 ? served * budgets[2] / totalSupply : 0,
+      unassigned: c.w - served,
+    };
+    return [c.key, shares];
+  }));
+}
+
+function sfcLineWidth(watts, maxWatts, minWidth = 1.5, maxWidth = 4.5, scale = 'sqrt') {
+  const min = Math.max(0.5, Math.min(20, Number(minWidth) || 1.5));
+  const max = Math.max(min, Math.min(20, Number(maxWidth) || 4.5));
+  const ratio = Math.max(0, Math.min(1, (Number(watts) || 0) / Math.max(1, Number(maxWatts) || 10000)));
+  const factor = scale === 'linear' ? ratio : Math.sqrt(ratio);
+  return (min + (max - min) * factor).toFixed(2);
+}
+
 class SmartifyFlowCard extends HTMLElement {
   static getConfigElement() { return document.createElement('smartify-flow-card-editor'); }
 
@@ -100,6 +132,7 @@ class SmartifyFlowCard extends HTMLElement {
       label: 'verbraucher', layout: 'classic', min_power: 10, hide_below_display_power: false, max_consumers: 8, min_flow: 5, idle_power: 5,
       show_stats: true, show_rest: true, rest_name: 'Nicht erfasst',
       max_expected_power_kw: 10, speed_multiplier: 1, font_scale: 1, background_transparency: 0,
+      allocation: 'smallest_first', line_width_min: 1.5, line_width_max: 4.5, line_scale: 'sqrt',
       contract_power_limit_kw: null, contract_warning_pct: 0.85,
       line_speeds: {}, max_width: 900,
     }, config);
@@ -325,9 +358,10 @@ class SmartifyFlowCard extends HTMLElement {
     if (c.show_rest && right.some(n => n.key === '_rest') && rest > 0) {
       candidates.push({ key: '_rest', w: rest });
     }
-    const allocations = sfcAllocateSources(candidates, {
-      pv: Math.min(pvL, total), battery: Bd, grid: I,
-    });
+    const supply = { pv: Math.min(pvL, total), battery: Bd, grid: I };
+    const allocations = c.allocation === 'proportional'
+      ? sfcAllocateProportional(candidates, supply)
+      : sfcAllocateSources(candidates, supply);
     const sumAllocation = (items, source) =>
       items.reduce((sum, x) => sum + (allocations.get(x.id)?.[source] || 0), 0);
     for (const n of right) {
@@ -912,7 +946,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         : 'var(--smartify-flow-line-color, var(--primary-text-color))';
       if (p.path.style.stroke !== stroke) p.path.style.stroke = stroke;
       if (p.path.getAttribute('d') !== d) p.path.setAttribute('d', d);
-      const strokeWidth = (1.5 + Math.min(f.w / maxW, 1) * 3).toFixed(2);
+      const strokeWidth = sfcLineWidth(f.w, maxW, this._c.line_width_min, this._c.line_width_max, this._c.line_scale);
       if (p.path.getAttribute('stroke-width') !== strokeWidth) p.path.setAttribute('stroke-width', strokeWidth);
       const tgt = f.to.replace(/^_/, '').replace(/^sensor\./, '');
       const ls = this._c.line_speeds || {};
@@ -1760,6 +1794,18 @@ class SmartifyFlowCardEditor extends HTMLElement {
     this._input(sec,'Kartentitel',['title']);
     this._select(sec,'Anordnung der Kacheln',['layout'], [['classic','Klassisch – Quellen links, Verbraucher rechts'],['radial','Radial – Quellen in der Mitte, Verbraucher rundherum']], 'classic');
     this._sourceOrderControl(sec);
+    this._select(sec, 'Quellenverteilung (Visualisierungsmodell)', ['allocation'], [
+      ['smallest_first', 'PV vom kleinsten zum größten Verbraucher (Standard)'],
+      ['proportional', 'Proportional – gleicher PV/Akku/Netz-Mix pro Verbraucher'],
+    ], 'smallest_first');
+    this._select(sec, 'Skalierung der Linienbreite', ['line_scale'], [
+      ['sqrt', 'Quadratwurzel – schwache Verbindungen deutlicher'],
+      ['linear', 'Linear – proportional zur Leistung'],
+    ], 'sqrt');
+    this._input(sec, 'Minimale Linienbreite (px)', ['line_width_min'], 'number',
+      'Standard 1,5 px. Die untere Breite bei sehr kleinen Energieflüssen (0,5–20 px).');
+    this._input(sec, 'Maximale Linienbreite (px)', ['line_width_max'], 'number',
+      'Standard 4,5 px. Muss mindestens so groß wie die minimale Linienbreite sein (0,5–20 px).');
     this._transparencyControl(sec);
     this._fontScaleControl(sec);
     for (const [title,key] of [
