@@ -1,4 +1,5 @@
 name: Publish versioned release
+# Release v0.6.3: smallest-first PV allocation.
 # Publish v0.5.7 only after the compact-header-badge regression checks pass.
 
 on:
