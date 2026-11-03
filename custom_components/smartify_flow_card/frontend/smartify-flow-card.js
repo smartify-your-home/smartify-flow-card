@@ -502,7 +502,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       m.flows.filter(f => f.from === '_battery').map(f => f.to)
     );
     const consumerBadge = (n) => {
-      if (n.w <= mf) return '';
+      if (n.w <= 0) return '';
       if (pvLineTargets.has(n.key)) {
         // Kleine, positive Anteile nicht als "0 % PV" ausgeben.
         const percentage = Math.max(0, Math.min(100, n.pvPct || 0));
@@ -513,7 +513,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         })} % PV`;
       }
       // Ohne PV-Linie niemals einen berechneten PV-Prozentwert anzeigen.
-      if (n.activeBadge) return n.activeBadge;
+      if (n.w <= mf) return '';
+      if (n.activeBadge && !/\\d+(?:[.,]\\d+)?\\s*%\\s*PV/i.test(n.activeBadge)) return n.activeBadge;
       if (gridLineTargets.has(n.key)) return 'NETZ';
       if (batteryLineTargets.has(n.key)) return 'AKKU';
       return '';
