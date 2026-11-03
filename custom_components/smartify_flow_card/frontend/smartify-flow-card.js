@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.5';
+const SFC_VERSION = '0.6.6';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -1062,8 +1062,8 @@ class SmartifyFlowCardEditor extends HTMLElement {
     input.addEventListener('change', () => this._put(path, input.checked));
     return input;
   }
-  _picker(section, title, path, mode = 'entity', hint = '') {
-    const shell = document.createElement('div'); shell.className = 'picker';
+  _picker(section, title, path, mode = 'entity', hint = '', options = {}) {
+    const shell = document.createElement('div'); shell.className = mode === 'icon' ? 'picker icon-picker' : 'picker';
     const input = document.createElement('input'); input.type = 'text';
     input.autocomplete = 'off'; input.spellcheck = false;
     input.placeholder = mode === 'label' ? 'Label suchen oder eingeben …' : mode === 'power' ? 'Leistungssensor suchen (W / kW) …' : mode === 'energy' ? 'Energiezähler suchen (kWh) …' : 'Entität suchen …';
@@ -1137,9 +1137,15 @@ class SmartifyFlowCardEditor extends HTMLElement {
     track.addEventListener('lostpointercapture', () => { drag = null; track.classList.remove('dragging'); });
     // The list can change in response to typing: update thumb after rendering.
     dropdown._syncThumb = syncThumb;
+    const preview = mode === 'icon' ? document.createElement('ha-icon') : null;
+    if (preview) {
+      preview.className = 'icon-preview';
+      preview.setAttribute('icon', options.value || this._get(path) || 'mdi:help-circle-outline');
+      shell.append(preview);
+    }
     shell.append(input, dropdown, track);
-    const obj = { input, dropdown, path, mode, current: '', active: 0, filtered: [] };
-    const val = this._get(path) || '';
+    const obj = { input, dropdown, path, mode, current: '', active: 0, filtered: [], onChoose: options.onChoose, preview };
+    const val = options.value !== undefined ? options.value : (this._get(path) || '');
     obj.current = val;
     input.value = this._display(val, mode);
     this._pickers.push(obj);
@@ -1156,20 +1162,26 @@ class SmartifyFlowCardEditor extends HTMLElement {
       this._drawSuggestions(obj);
     };
     input.addEventListener('focus', () => { this._closePickers(obj); update(); });
-    input.addEventListener('input', () => { this._closePickers(obj); update(); });
+    input.addEventListener('input', () => {
+      if (preview) preview.setAttribute('icon', input.value.trim().startsWith('mdi:') ? input.value.trim() : (obj.current || 'mdi:help-circle-outline'));
+      this._closePickers(obj); update();
+    });
     input.addEventListener('keydown', e => {
       if (e.key === 'Escape') { dropdown.hidden = true; input.value = this._display(obj.current, mode); }
       if (e.key === 'ArrowDown' && !dropdown.hidden) { e.preventDefault(); obj.active = Math.min(obj.active + 1, obj.filtered.length - 1); this._drawSuggestions(obj); }
       if (e.key === 'ArrowUp' && !dropdown.hidden) { e.preventDefault(); obj.active = Math.max(0, obj.active - 1); this._drawSuggestions(obj); }
       if (e.key === 'Enter') {
         if (!dropdown.hidden && obj.filtered[obj.active]) { e.preventDefault(); this._choose(obj, obj.filtered[obj.active].id); }
-        else if (mode === 'label') { e.preventDefault(); this._choose(obj, input.value.trim()); }
+        else if (mode === 'label' || (mode === 'icon' && /^mdi:[a-z0-9-]+$/i.test(input.value.trim()))) {
+          e.preventDefault(); this._choose(obj, input.value.trim());
+        }
       }
     });
     // focusout is delayed so pointer selection gets processed first.
     input.addEventListener('blur', () => { setTimeout(() => {
       if (!shell.contains(this.shadowRoot.activeElement)) {
-        if (mode === 'label' && input.value.trim() && input.value !== this._display(obj.current, mode)) this._choose(obj, input.value.trim());
+        if ((mode === 'label' || mode === 'icon') && input.value.trim() && input.value !== this._display(obj.current, mode) &&
+            (mode === 'label' || /^mdi:[a-z0-9-]+$/i.test(input.value.trim()))) this._choose(obj, input.value.trim());
         else input.value = this._display(obj.current, mode);
         dropdown.hidden = true;
       }
@@ -1180,13 +1192,15 @@ class SmartifyFlowCardEditor extends HTMLElement {
   _display(id, mode) {
     if (!id) return '';
     const found = this._matchingEntities(mode).find(x => x.id === id);
-    return found ? `${found.label}  ·  ${id}` : id;
+    return mode === 'icon' ? id : found ? `${found.label}  ·  ${id}` : id;
   }
   _choose(obj, id) {
     obj.current = id;
     obj.input.value = this._display(id, obj.mode);
     obj.dropdown.hidden = true;
-    if (obj.path[0] === '_new_consumer') this._config._new_consumer = id;
+    if (obj.preview) obj.preview.setAttribute('icon', id || 'mdi:help-circle-outline');
+    if (obj.onChoose) obj.onChoose(id);
+    else if (obj.path[0] === '_new_consumer') this._config._new_consumer = id;
     else this._put(obj.path, id);
   }
   _closePickers(except) { for (const p of this._pickers) if (p !== except) p.dropdown.hidden = true; }
@@ -1202,7 +1216,7 @@ class SmartifyFlowCardEditor extends HTMLElement {
       const b = document.createElement('button'); b.type = 'button';
       b.className = 'option' + (index === p.active ? ' selected' : '');
       b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(index === p.active));
-      const icon = document.createElement('ha-icon'); icon.setAttribute('icon', item.icon);
+      const icon = document.createElement('ha-icon'); icon.setAttribute('icon', p.mode === 'icon' ? item.id : item.icon);
       const content = document.createElement('span');
       const name = document.createElement('strong'); name.textContent = item.label;
       const id = document.createElement('small'); id.textContent = item.id + (item.unit ? '  ·  ' + item.unit : '');
