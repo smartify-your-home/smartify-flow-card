@@ -1,3 +1,11 @@
+## v0.6.6 – Einheitliche getypte Entitätensuche und visuelle Icon-Auswahl (2026-11-03)
+
+- Plus-/Minus-Verbraucher-Popups verwenden dieselbe komfortable HA-Suche wie der Haupteditor (Name/Entity-ID, Icon, Einheit, Vorschläge, Keyboard, Touch und eigener Scrollgriff). Die Browser-Datalist entfällt.
+- Strenge Sensortypfilter: Leistung nur `device_class: power` oder unklassifizierte W/kW/MW-Sensoren; Energie nur `device_class: energy` oder unklassifizierte Wh/kWh/MWh-Sensoren. Validierung beim Speichern verhindert falsche Entitäten.
+- Icon-Auswahl mit Live-Vorschlägen **und Symbolvorschau** für sämtliche Geräte und Quellen (PV, Batterie, Netz), einschließlich Suchkatalog mit über 100 gängigen MDI-Icons und bekannten HA-Entity-Icons; eigene `mdi:`-Namen möglich.
+- Auswahl im Popup bleibt bis zur Bestätigung ein Entwurf; Esc schließt bei offenem Suchdropdown zuerst nur die Vorschlagsliste. Keine Änderung der Verteilungslogik oder bestehenden Geräte-Konfiguration.
+- Neue Regressionstests für beide Sensortypen, falsche Klassifikationen und Icon-Vorschläge. Browser-/Mobiltests in Home Assistant stehen noch aus.
+
 ## v0.6.5 – Verbraucherverwaltung per Plus/Minus-Popup (2026-11-03)
 
 - Im visuellen Karteneditor kompakte Verbraucherkacheln mit Plus rechts oben und Minus je Verbraucher. **Minus öffnet Bearbeiten/Entfernen**, statt sofort zu löschen.
