@@ -1,4 +1,5 @@
 name: Publish versioned release
+# Re-run release publication after v0.5.6 documentation and regression checks.
 
 on:
   push:
