@@ -1,3 +1,11 @@
+## v0.5.7 – Kompakte Quellanteile wiederhergestellt (2026-11-03)
+
+- Rücknahme des unbeabsichtigten Vollbreiten-Blocks für Quellen-Prozentwerte aus v0.5.6.
+- Ursprüngliches **kleines graues Badge oben rechts** neben dem Gerätenamen wiederhergestellt; PV-, Akku- und Netzanteile stehen innerhalb des Badges untereinander.
+- Leistungswert und Tagesenergie behalten ihre ursprünglichen Positionen; keine breite graue Leiste unter dem Leistungswert.
+- Bestehende Quellenverteilung aus v0.5.6 bleibt erhalten. Neuer Regressionstest verhindert zukünftiges Ausweiten/Versetzen des Badges.
+- Keine Änderung an gespeicherten Geräte- oder Dashboard-Konfigurationen. HA-Live- und Mobiltests stehen noch aus.
+
 ## v0.5.6 – PV-, Akku- und Netzanteil je Verbraucher (2026-11-03)
 
 - Jeder Verbraucher zeigt unter seiner Leistung die individuelle, rechnerisch zugeteilte Quellenaufteilung: **PV % · Akku % · Netz %**.
