@@ -1,6 +1,6 @@
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.5.9 · Karte v0.5.9**
+**Integration v0.6.0 · Karte v0.6.0**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -8,7 +8,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.5.9`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.0`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -30,7 +30,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.5.9
+/smartify_flow_card/smartify-flow-card.js?v=0.6.0
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -47,7 +47,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.5.9
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.0
       type: module
 ```
 
@@ -89,19 +89,19 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.5.9`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.5.9`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.0`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.0`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 
 ## Fachliche Bedienhinweise
 
-- **PV-Verteilung:** Verbraucher nach aktueller Leistung (groß nach klein). Der gelbe Kachelstreifen zeigt den modellierten PV-Anteil genau dieses Geräts. Im **kleinen Badge oben rechts neben dem Gerätenamen** stehen die jeweils diesem Gerät zugeteilten Anteile in Prozent, **untereinander**: `PV`, `Akku` und `Netz`. Die Anteile werden vom größten Verbraucher absteigend aus den verfügbaren Quellen-Leistungen zugeteilt und verwenden dieselben Wattwerte wie die zugehörigen animierten Linien. Bei fehlenden Quellenwerten erscheint ein Anteil `offen` statt einer erfundenen Netzdeckung. Die Verteilung ist eine Prioritätsvisualisierung, keine physikalisch gemessene Geräteversorgung.
+- **PV-Verteilung:** Verbraucher nach aktueller Leistung (groß nach klein). Jeder Verbraucher hat unten einen **22 px hohen, segmentierten Farbstreifen**: Gelb = PV, Grün = entladender Akku, themebasierte Graufarbe = Netz, hellgrau = nicht zugeordnet. Die Breite entspricht der individuellen Watt-Zuteilung; die auf ganze Prozentwerte gerundeten Labels stehen mittig **im jeweiligen Farbsegment**, soweit dort Platz ist. Bei sehr kleinen Anteilen bleibt die Farbe sichtbar, der Text entfällt zur Vermeidung von Überlappungen. Tooltip/Kachelbeschreibung enthält alle Wattwerte. Das Modell ist eine priorisierte Visualisierung und keine physikalische Einzelmessung.
 - **Quellen und Netz:** Ein Netzsaldo-Sensor mit wählbarem Vorzeichen oder getrennte Bezugs-/Einspeisesensoren; eine dynamische Netzkachel zeigt immer beide bisherigen Tagesenergiezähler an.
 - **Geräte:** Automatische Erkennung von Leistungssensoren mit HA-Label `verbraucher`; manuelle Auswahl mit Schnellsuche und eigenem Namen, Icon und Farbe weiterhin möglich. Beides kann kombiniert werden.
 - **Sortierung:** In der klassischen Listenansicht werden alle Verbraucher nach aktueller Leistung absteigend sortiert, inklusive der Sammelkachel **Sonstige** und **Nicht erfasst**. Eine Sammelkachel mit der höchsten Leistung steht ganz oben. Die Quellleistungs-Zuteilung ändert sich durch die Darstellungssortierung nicht.
 - **Schriftgröße:** Unter **Darstellung & Animation → Schriftgröße aller Kartentexte (%)** von 50 bis 200 % einstellbar (Standard 100 %). Der Wert skaliert Titel, Namen, Leistungen, Einheiten, Badges und Statistiken einschließlich Radialansicht. Das bisherige YAML-Feld `font_scale: 1` bleibt kompatibel; z. B. `font_scale: 1.2` für 120 %.
 - **Einblendung:** Anzeigeleistung und Schalter zum Ausblenden sowie separate Ausgrau-Schwelle. Unsichtbare Geräte bleiben in der Dashboard-Konfiguration gespeichert.
-- **Prozentanzeige:** Der kleine graue Badge bleibt oben rechts neben dem Gerätenamen; er wird weder verbreitert noch verschoben. Mehrere Quellen erscheinen untereinander, **linksbündig – auch wenn nur eine Quelle angezeigt wird**. PV-, Akku-, Netz- und gegebenenfalls offene Anteile sind jeweils auf **0 Dezimalstellen gerundet** (z. B. `15 % PV` und `85 % Netz`). Leistungszahl und Tagesenergie behalten ihre bisherige Position.
+- **Prozentanzeige:** Keine zusätzlichen Prozent-Badges bei Verbrauchern: Stattdessen sind die individuellen PV-/Akku-/Netz-/offen-Prozentwerte in den farbigen Fußstreifen der jeweiligen Gerätekacheln integriert. Kleine Segmente behalten Farbe und Tooltip, aber keinen überlappenden Text. Geräte-Namen, Leistung und Tagesenergie behalten ihre bisherige Anordnung.
 - **Darstellung:** Klassisches oder Radiallayout mit animierten Kurven, PV-Verbindungen in dunklem Gelb, Theme-Textfarben, 20 % kleineren Einheiten, Theme-Rundungen und einstellbarer Hintergrundtransparenz.
 - **Energiestatistik:** Gesamtenergiezähler werden für Tageswerte verwendet; PV-Eigenverbrauchsquote = `(PV-Ertrag − Einspeisung) / PV-Ertrag × 100`. Bei Akku ist die Autarkie ohne zusätzliche Energiezähler nur eine Näherung.
 
