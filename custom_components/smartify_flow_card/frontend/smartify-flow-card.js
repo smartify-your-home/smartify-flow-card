@@ -45,7 +45,7 @@ function sfcAllocateSources(candidates, supply) {
   for (const item of consumers) {
     allocations.set(item.key, { pv: 0, battery: 0, grid: 0, unassigned: item.w });
   }
-  const bySmallest = [...consumers].sort((a, b) => a.w - b.w || String(a.key).localeCompare(String(b.key));
+  const bySmallest = [...consumers].sort((a, b) => a.w - b.w || String(a.key).localeCompare(String(b.key)));
   for (const item of bySmallest) {
     const share = allocations.get(item.key);
     const assigned = Math.min(share.unassigned, remaining.pv);
@@ -53,7 +53,7 @@ function sfcAllocateSources(candidates, supply) {
     share.unassigned -= assigned;
     remaining.pv -= assigned;
   }
-  const byLargest = [...consumers].sort((a, b) => b.w - a.w || String(a.key).localeCompare(String(b.key));
+  const byLargest = [...consumers].sort((a, b) => b.w - a.w || String(a.key).localeCompare(String(b.key)));
   for (const source of ['battery', 'grid']) {
     for (const item of byLargest) {
       const share = allocations.get(item.key);
