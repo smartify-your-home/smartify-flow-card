@@ -37,8 +37,9 @@ function sfcSourceOrder(order, available = SFC_SOURCE_KEYS) {
 function sfcMoveSource(order, key, target) {
   const next = sfcSourceOrder(order);
   if (!next.includes(key) || !next.includes(target) || key === target) return next;
+  const targetIndex = next.indexOf(target);
   next.splice(next.indexOf(key), 1);
-  next.splice(next.indexOf(target), 0, key);
+  next.splice(targetIndex, 0, key);
   return next;
 }
 
