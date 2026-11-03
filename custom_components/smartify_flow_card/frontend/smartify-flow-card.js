@@ -1347,27 +1347,28 @@ class SmartifyFlowCardEditor extends HTMLElement {
         dialog.append(container);
         return input;
       };
-      const entity = field('entity', 'Leistungssensor (W/kW)', id || '', 'text', 'Nach Namen oder Entity-ID suchen. Nur Leistungssensoren sind zulässig.');
-      entity.setAttribute('list', 'sfc-consumer-power-' + this._instanceId);
-      const dataList = document.createElement('datalist'); dataList.id = 'sfc-consumer-power-' + this._instanceId;
-      for (const option of options) {
-        const opt = document.createElement('option');
-        opt.value = option.id; opt.label = option.label;
-        dataList.append(opt);
-      }
-      dialog.append(dataList);
+      // Reuse exactly the same visual HA picker as the main card editor.
+      // Popup picker callbacks only edit a local draft; no config-changed
+      // event is fired until the user presses Save.
+      const staged = [];
+      const draftPicker = (key, title, mode, value, hint = '') => {
+        let current = value || '';
+        const obj = this._picker(dialog, title, ['_consumer_draft', key], mode, hint, {
+          value: current,
+          onChoose: chosen => { current = chosen; },
+        });
+        staged.push(obj);
+        formFields[key] = { get value() { return current; }, picker: obj };
+        return obj;
+      };
+      const entity = draftPicker('entity', 'Leistungssensor (W/kW/MW)', 'power', id || '',
+        'Nur Home-Assistant-Leistungssensoren (W, kW, MW). Suche nach Namen oder Entity-ID.');
       field('name', 'Anzeigename', original.name || '');
-      field('icon', 'Icon (mdi:...)', original.icon || '');
+      draftPicker('icon', 'Icon (mit Symbolvorschau)', 'icon', original.icon || '',
+        'Suchbegriff oder mdi:Iconname eintippen; Symbole erscheinen direkt in der Vorschlagsliste.');
       field('color', 'Gerätefarbe (HEX/CSS)', original.color || '');
-      const energy = field('energy', 'Gesamtenergiezähler (kWh, optional)', original.energy || '');
-      const energyList = document.createElement('datalist');
-      energyList.id = 'sfc-consumer-energy-' + this._instanceId;
-      energy.setAttribute('list', energyList.id);
-      for (const option of this._matchingEntities('energy')) {
-        const opt = document.createElement('option'); opt.value = option.id; opt.label = option.label;
-        energyList.append(opt);
-      }
-      dialog.append(energyList);
+      const energy = draftPicker('energy', 'Gesamtenergiezähler (Wh/kWh/MWh, optional)', 'energy', original.energy || '',
+        'Nur Home-Assistant-Energiesensoren (Wh, kWh, MWh). Suche nach Namen oder Entity-ID.');
       const error = document.createElement('small'); error.className = 'consumer-modal-error';
       error.setAttribute('role', 'alert');
       dialog.append(error);
@@ -1381,7 +1382,10 @@ class SmartifyFlowCardEditor extends HTMLElement {
       remove.type = 'button'; remove.className = 'consumer-modal-remove';
       remove.textContent = 'Verbraucher entfernen';
       remove.hidden = !id;
-      const close = () => { overlay.remove(); };
+      const close = () => {
+        overlay.remove();
+        this._pickers = this._pickers.filter(p => !staged.includes(p));
+      };
       const onKey = e => {
         if (e.key === 'Escape') { e.stopPropagation(); close(); }
       };
@@ -1389,9 +1393,17 @@ class SmartifyFlowCardEditor extends HTMLElement {
       overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
       cancel.addEventListener('click', close);
       save.addEventListener('click', () => {
-        const nextId = entity.value.trim();
-        if (!options.some(option => option.id === nextId)) {
+        const nextId = formFields.entity.value.trim();
+        if (!this._matchingEntities('power').some(option => option.id === nextId)) {
           error.textContent = 'Bitte einen gültigen Home-Assistant-Leistungssensor auswählen.'; return;
+        }
+        const energyId = formFields.energy.value.trim();
+        if (energyId && !this._matchingEntities('energy').some(option => option.id === energyId)) {
+          error.textContent = 'Bitte einen gültigen Home-Assistant-Energiesensor auswählen.'; return;
+        }
+        const iconId = formFields.icon.value.trim();
+        if (iconId && !/^mdi:[a-z0-9-]+$/i.test(iconId)) {
+          error.textContent = 'Bitte ein gültiges MDI-Icon auswählen oder mdi:iconname eingeben.'; return;
         }
         if (nextId !== id && this._config.consumers?.[nextId]) {
           error.textContent = 'Dieser Verbraucher ist bereits manuell konfiguriert.'; return;
@@ -1423,7 +1435,7 @@ class SmartifyFlowCardEditor extends HTMLElement {
       dialog.append(buttons);
       overlay.append(dialog);
       this.shadowRoot.append(overlay);
-      entity.focus();
+      entity.input.focus();
     };
     this._instanceId ||= String(Math.floor(Math.random() * 1e9));
     add.addEventListener('click', () => open());
