@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.5.4';
+const SFC_VERSION = '0.5.5';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -488,15 +488,36 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       }
       el.classList.toggle('warn', !!warn);
     };
-    const pvPct = Math.round(m.share.solar * 100), batPct = Math.round(m.share.battery * 100), gridPct = Math.round(m.share.grid * 100);
-    let loadBadge = '';
-    if (m.total > mf) {
-      if (pvPct >= 99) loadBadge = '100% PV';
-      else if (gridPct >= 99) loadBadge = 'Netz';
-      else if (batPct && pvPct) loadBadge = 'PV + Akku';
-      else if (batPct >= 99) loadBadge = '100% Akku';
-      else loadBadge = `${pvPct + batPct}% ${batPct && !pvPct ? 'Akku' : 'PV'}`;
-    }
+    // Die Badge-Prozentzahl muss genau wie PV-Streifen und PV-Linie
+    // aus der priorisierten Zuordnung dieses EINEN Verbrauchers kommen.
+    // Der globale PV-Anteil des gesamten Hauses wäre hier irreführend.
+    const pvLineTargets = new Set(
+      m.flows.filter(f => f.from === '_solar' && f.to !== '_grid' && f.to !== '_battery')
+        .map(f => f.to)
+    );
+    const gridLineTargets = new Set(
+      m.flows.filter(f => f.from === '_grid').map(f => f.to)
+    );
+    const batteryLineTargets = new Set(
+      m.flows.filter(f => f.from === '_battery').map(f => f.to)
+    );
+    const consumerBadge = (n) => {
+      if (n.w <= mf) return '';
+      if (pvLineTargets.has(n.key)) {
+        // Kleine, positive Anteile nicht als "0 % PV" ausgeben.
+        const percentage = Math.max(0, Math.min(100, n.pvPct || 0));
+        const digits = percentage < 10 ? 1 : 0;
+        return `${percentage.toLocaleString('de-DE', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: digits,
+        })} % PV`;
+      }
+      // Ohne PV-Linie niemals einen berechneten PV-Prozentwert anzeigen.
+      if (n.activeBadge) return n.activeBadge;
+      if (gridLineTargets.has(n.key)) return 'NETZ';
+      if (batteryLineTargets.has(n.key)) return 'AKKU';
+      return '';
+    };
     for (const n of m.left) {
       if (n.kind === 'solar') {
         set(n, this._fmtW(n.w),
@@ -516,7 +537,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       }
     }
     for (const n of m.right) {
-      set(n, this._fmtW(n.w), n.energy != null ? `${this._fmtKwh(n.energy)} kWh heute` : '', '', n.w > mf ? (n.activeBadge || loadBadge) : '', null);
+      set(n, this._fmtW(n.w), n.energy != null ? `${this._fmtKwh(n.energy)} kWh heute` : '', '', consumerBadge(n), null);
     }
     this._updateStats(m);
     requestAnimationFrame(() => this._drawLines());
