@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.1';
+const SFC_VERSION = '0.6.2';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -90,7 +90,7 @@ class SmartifyFlowCard extends HTMLElement {
   getGridOptions() { return { columns: 'full', rows: 'auto' }; }
 
   connectedCallback() {
-    if (!this._ro) this._ro = new ResizeObserver(() => { this._fitSourceLabels(); this._drawLines(); });
+    if (!this._ro) this._ro = new ResizeObserver(() => this._scheduleDraw());
     if (this._flowEl) this._ro.observe(this._flowEl);
   }
   disconnectedCallback() { if (this._ro) this._ro.disconnect(); }
@@ -541,21 +541,57 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     }
   }
 
+
+  _scheduleDraw() {
+    // Coalesce sensor changes and ResizeObserver callbacks into one frame.
+    if (this._drawRaf || !this.isConnected) return;
+    this._drawRaf = requestAnimationFrame(() => {
+      this._drawRaf = null;
+      if (!this.isConnected || !this._flowEl) return;
+      this._fitSourceLabels();
+      this._drawLines();
+    });
+  }
+
+  _syncNodes(container, nodes) {
+    // Reuse existing elements instead of destroying all tiles and animations.
+    const old = new Map([...container.children].map(el => [el.dataset.key, el]));
+    const desired = new Set(nodes.map(n => n.key));
+    for (const [key, el] of old) {
+      if (!desired.has(key)) { el.remove(); old.delete(key); }
+    }
+    let anchor = container.firstElementChild;
+    for (const n of nodes) {
+      let el = old.get(n.key);
+      if (!el) {
+        const template = document.createElement('template');
+        template.innerHTML = this._nodeHtml(n);
+        el = template.content.firstElementChild;
+        el.addEventListener('click', () => {
+          const item = [...this._m.left, ...this._m.right].find(x => x.key === el.dataset.key);
+          if (item?.entity) {
+            const ev = new Event('hass-more-info', { bubbles: true, composed: true });
+            ev.detail = { entityId: item.entity };
+            this.dispatchEvent(ev);
+          }
+        });
+      }
+      const name = el.querySelector('.nm');
+      if (name.textContent !== n.name) name.textContent = n.name;
+      const icon = el.querySelector('.hd ha-icon');
+      if (icon.getAttribute('icon') !== n.icon) icon.setAttribute('icon', n.icon);
+      if (el.style.getPropertyValue('--c') !== n.color) el.style.setProperty('--c', n.color);
+      // Avoid reinserting nodes unless the displayed order actually changed.
+      if (el !== anchor) container.insertBefore(el, anchor);
+      anchor = el.nextElementSibling;
+    }
+  }
+
   _update() {
     if (!this._h || !this._c || !this._flowEl) return;
     const m = this._compute(); this._m = m;
-    const sig = m.left.map((n) => n.key + ':' + n.name + ':' + n.icon).join('|') + '#' + m.right.map((n) => n.key + ':' + n.name + ':' + n.icon).join('|');
-    if (sig !== this._sig) {
-      this._sig = sig;
-      this._leftEl.innerHTML = m.left.map((n) => this._nodeHtml(n)).join('');
-      this._rightEl.innerHTML = m.right.map((n) => this._nodeHtml(n)).join('');
-      for (const el of this.shadowRoot.querySelectorAll('.node')) {
-        el.addEventListener('click', () => {
-          const n = [...this._m.left, ...this._m.right].find((x) => x.key === el.dataset.key);
-          if (n && n.entity) { const ev = new Event('hass-more-info', { bubbles: true, composed: true }); ev.detail = { entityId: n.entity }; this.dispatchEvent(ev); }
-        });
-      }
-    }
+    this._syncNodes(this._leftEl, m.left);
+    this._syncNodes(this._rightEl, m.right);
     const mf = Number(this._c.idle_power ?? this._c.min_flow ?? 5);
     const isSourceConsumer = n => n.kind === 'consumer' || n.key === '_rest' || n.key === '_other';
     const set = (n, val, sub, sub2, badge, bar, warn) => {
@@ -632,7 +668,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       set(n, this._fmtW(n.w), n.energy != null ? `${this._fmtKwh(n.energy)} kWh heute` : '', '', '', null);
     }
     this._updateStats(m);
-    requestAnimationFrame(() => { this._fitSourceLabels(); this._drawLines(); });
+    this._scheduleDraw();
   }
 
   _updateStats(m) {
@@ -686,11 +722,14 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     if (this._c.layout !== 'radial' || !this._flowEl || !this._m) return;
     const flow = this._flowEl, width = flow.clientWidth;
     const narrow = width < 560;
-    flow.classList.toggle('radial-narrow', narrow);
+    if (flow.classList.contains('radial-narrow') !== narrow) flow.classList.toggle('radial-narrow', narrow);
     const nodes = [...flow.querySelectorAll('.node')];
     if (narrow) {
-      flow.style.height = '';
-      for (const el of nodes) { el.style.left = ''; el.style.top = ''; }
+      if (flow.style.height) flow.style.height = '';
+      for (const el of nodes) {
+        if (el.style.left) el.style.left = '';
+        if (el.style.top) el.style.top = '';
+      }
       return;
     }
     // Reserve sufficient vertical space for each outer tile. One ring, no overlapping rows.
@@ -708,13 +747,21 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     const srcGap = 12;
     const srcH = srcNodes.reduce((sum, el) => sum + (el?.offsetHeight || 72), 0) + srcGap * (sources.length - 1);
     let sy = cy - srcH / 2;
-    srcNodes.forEach(el => { if (!el) return; el.style.left = `${cx - nodeWidth / 2}px`; el.style.top = `${sy}px`; sy += el.offsetHeight + srcGap; });
+    srcNodes.forEach(el => {
+      if (!el) return;
+      const left = `${cx - nodeWidth / 2}px`, top = `${sy}px`;
+      if (el.style.left !== left) el.style.left = left;
+      if (el.style.top !== top) el.style.top = top;
+      sy += el.offsetHeight + srcGap;
+    });
     outer.forEach((n, i) => {
       const el = [...this._rightEl.children].find(x => x.dataset.key === n.key);
       if (!el) return;
       const angle = -Math.PI / 2 + 2 * Math.PI * (i / outer.length);
-      el.style.left = `${cx + rx * Math.cos(angle) - nodeWidth / 2}px`;
-      el.style.top = `${cy + ry * Math.sin(angle) - el.offsetHeight / 2}px`;
+      const left = `${cx + rx * Math.cos(angle) - nodeWidth / 2}px`;
+      const top = `${cy + ry * Math.sin(angle) - el.offsetHeight / 2}px`;
+      if (el.style.left !== left) el.style.left = left;
+      if (el.style.top !== top) el.style.top = top;
     });
   }
 
@@ -722,7 +769,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     const m = this._m; if (!m || !this._flowEl) return;
     this._layoutRadial();
     const box = this._flowEl.getBoundingClientRect(); if (!box.width) return;
-    this._svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+    const viewBox = `0 0 ${box.width} ${box.height}`;
+    if (this._svg.getAttribute('viewBox') !== viewBox) this._svg.setAttribute('viewBox', viewBox);
     const rect = (key) => {
       const el = this.shadowRoot.querySelector(`.node[data-key="${CSS.escape(key)}"]`); if (!el) return null;
       const r = el.getBoundingClientRect();
@@ -805,14 +853,16 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       p.path.style.stroke = f.from === '_solar' && !f.gridExport && !f.loop
         ? 'var(--smartify-flow-solar-line-color, #d4a000)'
         : 'var(--smartify-flow-line-color, var(--primary-text-color))';
-      p.path.setAttribute('d', d);
-      p.path.setAttribute('stroke-width', (1.5 + Math.min(f.w / maxW, 1) * 3).toFixed(2));
+      if (p.path.getAttribute('d') !== d) p.path.setAttribute('d', d);
+      const strokeWidth = (1.5 + Math.min(f.w / maxW, 1) * 3).toFixed(2);
+      if (p.path.getAttribute('stroke-width') !== strokeWidth) p.path.setAttribute('stroke-width', strokeWidth);
       const tgt = f.to.replace(/^_/, '').replace(/^sensor\./, '');
       const ls = this._c.line_speeds || {};
       const mult = (Number(this._c.speed_multiplier) || 1) * (Number(ls[`${f.from.replace(/^_/, '')}_${tgt}`]) || 1);
       const speed = (14 + Math.min(f.w, maxW) / 40) * mult; // px/s
       const dur = Math.max(0.1, Math.round((dash.p / speed) * 10) / 10);
-      if (dur !== p.dur) { p.dur = dur; p.path.style.animationDuration = dur + 's'; }
+      // CSS dash animations should not restart on every watt change.
+      if (p.dur === null) { p.dur = dur; p.path.style.animationDuration = dur + 's'; }
     }
     for (const [id, p] of this._paths) if (!seen.has(id)) { p.path.remove(); this._paths.delete(id); }
   }
