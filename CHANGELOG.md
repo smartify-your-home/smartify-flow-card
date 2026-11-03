@@ -1,3 +1,11 @@
+## v0.6.3 – PV zuerst an kleine Verbraucher (2026-11-03)
+
+- PV-Budget wird nun **aufsteigend nach Verbraucherleistung** verteilt: kleinster Einzelverbraucher zuerst, größter zuletzt.
+- Akku und Netz decken anschließend verbleibende Leistungen, ohne Quellenbudget mehrfach zu vergeben; bei Messlücken bleibt ein offener Rest.
+- Listenanzeige unverändert **absteigend** nach Leistung, einschließlich „Sonstige“ und „Nicht erfasst“. Die visuelle Reihenfolge steuert die PV-Zuordnung nicht.
+- Segmentbreiten, Prozentwerte und animierte PV-Verbindungen verwenden die neue individuelle Zuteilung. Regressionstests für mehrere Verbraucher, Teilzuteilung und Quellenlimits.
+- Kein Live-Test in Home Assistant erfolgt.
+
 ## v0.6.2 – Flackern der gesamten Karte / Radialmodus reduzieren (2026-11-03)
 
 - Keine vollständigen Neuaufbauten aller Verbraucher- und Quellenkacheln mehr, nur weil sich Reihenfolge oder Leistung ändern. Bestehende DOM-Elemente, Klick-Handler, Gerätefarben und Quellen-Segmente bleiben erhalten.
