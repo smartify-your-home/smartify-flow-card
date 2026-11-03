@@ -1,3 +1,12 @@
+## v0.6.5 – Verbraucherverwaltung per Plus/Minus-Popup (2026-11-03)
+
+- Im visuellen Karteneditor kompakte Verbraucherkacheln mit Plus rechts oben und Minus je Verbraucher. **Minus öffnet Bearbeiten/Entfernen**, statt sofort zu löschen.
+- Popup bearbeitet Leistungsentität, Anzeigenamen, Icon, Gerätefarbe und optionalen Gesamtenergiezähler; Übernehmen/Abbrechen und separate bestätigte Löschaktion.
+- Änderungen werden erst nach explizitem Speichern via `config-changed` an Lovelace übergeben, nicht während des Tippens.
+- Per Label automatisch erkannte Verbraucher werden beim Entfernen auf Kartenebene `excluded_consumers` ausgeblendet und erscheinen nicht sofort erneut; erneutes Hinzufügen erlaubt.
+- Keine Schreibaktion im normalen Dashboard (Lovelace-Konfiguration wird dort nicht stillschweigend überschrieben). Energiemodell, sortierte Verbraucher, farbige Quellstreifen und More-Info bleiben erhalten.
+- Regressionstest für Modalfunktion, Entitätenfilter und Löschbestätigung. Browserspezifischer Live-Test weiterhin ausstehend.
+
 ## v0.6.4 – Quellenkacheln per Ziehgriff umsortieren (2026-11-03)
 
 - PV-, Akku- und Netzkacheln unter **Darstellung & Animation** frei umreihen: Ziehgriff für Touch und Maus, Auf/Ab-Schaltflächen sowie Tastaturpfeile.
