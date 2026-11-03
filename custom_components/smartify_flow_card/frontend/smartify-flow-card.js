@@ -308,6 +308,15 @@ class SmartifyFlowCard extends HTMLElement {
     // Preserve radial layout's ring ordering; only classic list is re-sorted.
     if (c.layout !== 'radial') {
       right.splice(0, right.length, ...sfcSortLoadTiles(right));
+    } else {
+      // Fix tile positions across power fluctuations. Otherwise small watt
+      // changes reorder the radial ring and make the whole card jump.
+      const previous = this._radialOrder || [];
+      const keys = new Set(right.map(n => n.key));
+      const stable = [...previous.filter(key => keys.has(key)), ...right.map(n => n.key).filter(key => !previous.includes(key))];
+      const positions = new Map(stable.map((key, i) => [key, i]));
+      right.sort((a, b) => positions.get(a.key) - positions.get(b.key));
+      this._radialOrder = stable;
     }
 
     const flows = [];
@@ -596,18 +605,22 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     const isSourceConsumer = n => n.kind === 'consumer' || n.key === '_rest' || n.key === '_other';
     const set = (n, val, sub, sub2, badge, bar, warn) => {
       const el = this.shadowRoot.querySelector(`.node[data-key="${CSS.escape(n.key)}"]`); if (!el) return;
-      // Zahlen bleiben groß, die Einheit wird 20 % kleiner dargestellt.
+      // Avoid rebuilding unchanged numbers/unit spans on every HA state.
       const valueEl = el.querySelector('.val');
-      const match = String(val).match(/^(.*?)(\s+)(kWh|MWh|Wh|kW|MW|W)$/i);
-      if (match) {
-        valueEl.replaceChildren(document.createTextNode(match[1] + match[2]));
-        const unit = document.createElement('span');
-        unit.className = 'unit';
-        unit.textContent = match[3];
-        valueEl.appendChild(unit);
-      } else valueEl.textContent = val;
-      el.querySelector('.sub').textContent = sub || '';
-      el.querySelector('.sub2').textContent = sub2 || '';
+      if (valueEl.dataset.value !== String(val)) {
+        valueEl.dataset.value = String(val);
+        const match = String(val).match(/^(.*?)(\s+)(kWh|MWh|Wh|kW|MW|W)$/i);
+        if (match) {
+          valueEl.replaceChildren(document.createTextNode(match[1] + match[2]));
+          const unit = document.createElement('span');
+          unit.className = 'unit';
+          unit.textContent = match[3];
+          valueEl.appendChild(unit);
+        } else valueEl.textContent = val;
+      }
+      const subEl = el.querySelector('.sub'), sub2El = el.querySelector('.sub2');
+      if (subEl.textContent !== (sub || '')) subEl.textContent = sub || '';
+      if (sub2El.textContent !== (sub2 || '')) sub2El.textContent = sub2 || '';
       if (n.kind === 'grid') {
         const rows = [el.querySelector('.sub'), el.querySelector('.sub2')];
         // Reset before measuring so growing screens restore the natural text size.
@@ -697,13 +710,16 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     ring('.a1', 58, autApprox);
     ring('.a2', 46, gridPct);
     ring('.a3', 34, exportPct);
-    r.querySelector('.ring .pc').innerHTML = `${pctText(autApprox)}<span class="unit">${autApprox == null ? '' : '%'}</span>`;
+    const central = `${pctText(autApprox)}<span class="unit">${autApprox == null ? '' : '%'}</span>`;
+    if (r.querySelector('.ring .pc').innerHTML !== central) r.querySelector('.ring .pc').innerHTML = central;
     r.querySelector('.ring .lb').textContent = hasStorage ? 'AUTARKIE CA.' : 'AUTARKIE';
     r.querySelector('.ring').title = hasStorage
       ? 'Autarkie-Näherung: Für eine genaue Berechnung mit Speicher werden zusätzliche Energiezähler benötigt.'
       : 'Näherung aus PV-Eigenverbrauch und Netzbezug.';
     const row = (i, pct, sub, small) => {
-      r.querySelector(`.r${i}p`).innerHTML = `${pctText(pct)}<span class="unit">${pct == null ? '' : '%'}</span><small>${small}</small>`;
+      const percent = `${pctText(pct)}<span class="unit">${pct == null ? '' : '%'}</span><small>${small}</small>`;
+      const percentEl = r.querySelector(`.r${i}p`);
+      if (percentEl.innerHTML !== percent) percentEl.innerHTML = percent;
       r.querySelector(`.r${i}s`).textContent = sub;
       r.querySelector(`.r${i}b`).style.width = `${Math.max(0, Math.min(pct ?? 0, 100))}%`;
     };
@@ -850,9 +866,10 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         p = { path, dur: null }; this._paths.set(id, p);
       }
       // Nur PV -> Verbraucher wird dunkelgelb; alle anderen Linien bleiben themebasiert.
-      p.path.style.stroke = f.from === '_solar' && !f.gridExport && !f.loop
+      const stroke = f.from === '_solar' && !f.gridExport && !f.loop
         ? 'var(--smartify-flow-solar-line-color, #d4a000)'
         : 'var(--smartify-flow-line-color, var(--primary-text-color))';
+      if (p.path.style.stroke !== stroke) p.path.style.stroke = stroke;
       if (p.path.getAttribute('d') !== d) p.path.setAttribute('d', d);
       const strokeWidth = (1.5 + Math.min(f.w / maxW, 1) * 3).toFixed(2);
       if (p.path.getAttribute('stroke-width') !== strokeWidth) p.path.setAttribute('stroke-width', strokeWidth);
