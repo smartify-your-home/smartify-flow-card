@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.5.6';
+const SFC_VERSION = '0.5.7';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -375,8 +375,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .hd{display:flex;align-items:center;gap:6px;min-width:0}
 .hd ha-icon{--mdc-icon-size:18px;color:var(--sf-txt);flex:none}
 .nm{font-weight:800;color:var(--sf-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72em;letter-spacing:.06em;text-transform:uppercase;flex:1;min-width:0}
-.bd{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;column-gap:7px;row-gap:2px;box-sizing:border-box;width:100%;margin-top:5px;text-align:center;font-family:inherit;font-size:calc(.6em + 2px);font-weight:600;letter-spacing:0;padding:4px 5px;border-radius:var(--sf-r);color:var(--sf-txt);
-  background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:normal;line-height:1.25}
+.bd{flex:none;box-sizing:border-box;width:auto;max-width:56%;margin:0;text-align:center;align-self:center;font-family:inherit;font-size:calc(.6em + 2px);font-weight:600;letter-spacing:0;padding:2px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
+  background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:pre;line-height:1.25}
 .bd:empty{display:none}
 .val .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
 .val{font-size:1.55em;font-weight:800;line-height:1.15;margin-top:4px;color:var(--sf-txt);white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -439,8 +439,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 
   _nodeHtml(n) {
     return `<div class="node" data-key="${this._esc(n.key)}" style="--c:${n.color}">
-      <div class="hd"><ha-icon icon="${this._esc(n.icon)}"></ha-icon><span class="nm">${this._esc(n.name)}</span></div>
-      <div class="val"></div><div class="bd"></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div></div>`;
+      <div class="hd"><ha-icon icon="${this._esc(n.icon)}"></ha-icon><span class="nm">${this._esc(n.name)}</span><span class="bd"></span></div>
+      <div class="val"></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div></div>`;
   }
 
   _update() {
@@ -506,7 +506,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       }
       el.classList.toggle('warn', !!warn);
     };
-    // Prozentwerte unter der Leistung; alle im grauen Feld zentriert.
+    // Bestehendes kleines Badge rechts im Kopf behalten; Quellenanteile nur untereinander schreiben.
     const percentText = (w, total) => {
       const pct = total > 0 ? 100 * w / total : 0;
       if (pct > 0 && pct < 0.1) return '<0,1 %';
@@ -521,7 +521,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       if (n.batteryW > 0.01) parts.push(`${percentText(n.batteryW, n.w)} Akku`);
       if (n.gridW > 0.01) parts.push(`${percentText(n.gridW, n.w)} Netz`);
       if (n.unassignedW > 0.01) parts.push(`${percentText(n.unassignedW, n.w)} offen`);
-      return parts.join(' · ');
+      return parts.join('\n');
     };
     for (const n of m.left) {
       if (n.kind === 'solar') {
