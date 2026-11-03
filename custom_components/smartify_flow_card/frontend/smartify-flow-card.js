@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.5.9';
+const SFC_VERSION = '0.6.0';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -90,7 +90,7 @@ class SmartifyFlowCard extends HTMLElement {
   getGridOptions() { return { columns: 'full', rows: 'auto' }; }
 
   connectedCallback() {
-    if (!this._ro) this._ro = new ResizeObserver(() => this._drawLines());
+    if (!this._ro) this._ro = new ResizeObserver(() => { this._fitSourceLabels(); this._drawLines(); });
     if (this._flowEl) this._ro.observe(this._flowEl);
   }
   disconnectedCallback() { if (this._ro) this._ro.disconnect(); }
@@ -383,7 +383,19 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .node{--c:#888;position:relative;overflow:hidden;border-radius:var(--sf-r);padding:9px 11px calc(10px + var(--sf-accent-h));cursor:pointer;min-width:0;
   background:var(--sf-bg);border:var(--sf-bw) solid var(--sf-bc);box-shadow:none;transition:opacity .3s}
 .node::after{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--sf-accent-h);background:var(--c)}
-.node.pv-striped::after{background:linear-gradient(to right,var(--smartify-flow-pv-stripe-color,#e3a600) 0%,var(--smartify-flow-pv-stripe-color,#e3a600) var(--pv-pct,0%),var(--c) var(--pv-pct,0%),var(--c) 100%)}
+.node.has-source-strip{padding-bottom:calc(11px + var(--sf-source-height,22px))}
+.node.has-source-strip::after{display:none}
+.source-strip{position:absolute;left:0;right:0;bottom:0;height:var(--sf-source-height,22px);display:flex;align-items:stretch;overflow:hidden;border-top:1px solid var(--sf-bc);font-family:inherit;font-size:.73em;line-height:1;color:var(--sf-txt)}
+.source-strip[hidden]{display:none}
+.source-segment{min-width:0;box-sizing:border-box;flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;position:relative}
+.source-segment span{display:block;min-width:0;white-space:nowrap;text-align:center;font-weight:600;padding:0 3px}
+.source-segment span[hidden]{display:none}
+.source-segment.pv{background:var(--smartify-flow-pv-stripe-color,#e3a600);color:#251e07}
+.source-segment.battery{background:var(--smartify-flow-battery-color,#2e7d32);color:#fff}
+.source-segment.grid{background:var(--secondary-background-color,#d3d3d3);color:var(--primary-text-color,#111)}
+.source-segment.unassigned{background:var(--sf-track);color:var(--sf-txt)}
+.source-segment + .source-segment{border-left:1px solid color-mix(in srgb,var(--sf-bc) 50%,transparent)}
+
 .node.idle{opacity:.45}
 .node.warn{background:var(--sf-txt)} .node.warn *{color:var(--sf-bg)!important}
 .hd{display:flex;align-items:center;gap:6px;min-width:0}
@@ -454,7 +466,50 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
   _nodeHtml(n) {
     return `<div class="node" data-key="${this._esc(n.key)}" style="--c:${n.color}">
       <div class="hd"><ha-icon icon="${this._esc(n.icon)}"></ha-icon><span class="nm">${this._esc(n.name)}</span><span class="bd"></span></div>
-      <div class="val"></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div></div>`;
+      <div class="val"></div><div class="sub"></div><div class="sub2"></div><div class="bar hide"><i></i></div><div class="source-strip" hidden></div></div>`;
+  }
+
+  // Gleiche W-Zuordnung wie bei den animierten Flusslinien.
+  // Beschriftungen erscheinen nur, wenn sie physisch ins Segment passen.
+  _updateSourceStrip(strip, n) {
+    if (!strip) return;
+    const entries = [
+      { key: 'pv', name: 'PV', w: n.pvW || 0 },
+      { key: 'battery', name: 'Akku', w: n.batteryW || 0 },
+      { key: 'grid', name: 'Netz', w: n.gridW || 0 },
+      { key: 'unassigned', name: 'offen', w: n.unassignedW || 0 },
+    ].filter(x => x.w > 0.01);
+    // Fill only the actual assigned share; never misrepresent missing watts.
+    const fragments = document.createDocumentFragment();
+    for (const item of entries) {
+      const pct = Math.max(0, Math.min(100, 100 * item.w / n.w));
+      const segment = document.createElement('div');
+      segment.className = 'source-segment ' + item.key;
+      segment.style.width = pct + '%';
+      segment.title = `${Math.round(pct)} % ${item.name} · ${this._fmtW(item.w)}`;
+      const label = document.createElement('span');
+      label.textContent = `${Math.round(pct)} % ${item.name}`;
+      segment.append(label);
+      fragments.append(segment);
+    }
+    strip.replaceChildren(fragments);
+    strip.setAttribute('aria-label', entries.map(item =>
+      `${Math.round(item.w / n.w * 100)} Prozent ${item.name}`
+    ).join(', '));
+  }
+
+  _fitSourceLabels() {
+    if (!this.shadowRoot) return;
+    for (const strip of this.shadowRoot.querySelectorAll('.source-strip:not([hidden])')) {
+      for (const segment of strip.querySelectorAll('.source-segment')) {
+        const label = segment.querySelector('span');
+        if (!label) continue;
+        label.hidden = false;
+        // Tiny segments keep their color, tooltip and aria information.
+        // Text is hidden rather than overflowing onto adjacent segments.
+        if (segment.clientWidth < label.scrollWidth + 3) label.hidden = true;
+      }
+    }
   }
 
   _update() {
@@ -473,6 +528,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       }
     }
     const mf = Number(this._c.idle_power ?? this._c.min_flow ?? 5);
+    const isSourceConsumer = n => n.kind === 'consumer' || n.key === '_rest' || n.key === '_other';
     const set = (n, val, sub, sub2, badge, bar, warn) => {
       const el = this.shadowRoot.querySelector(`.node[data-key="${CSS.escape(n.key)}"]`); if (!el) return;
       // Zahlen bleiben groß, die Einheit wird 20 % kleiner dargestellt.
@@ -506,33 +562,24 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         requestAnimationFrame(fit);
       }
 
-      el.querySelector('.bd').textContent = badge || '';
+      // Quellenanteile bei Verbrauchern im unteren Streifen statt im Kopf-Badge.
+      el.querySelector('.bd').textContent = isSourceConsumer(n) ? '' : (badge || '');
       const b = el.querySelector('.bar'); b.classList.toggle('hide', bar == null);
       if (bar != null) b.firstElementChild.style.width = Math.max(0, Math.min(100, bar)) + '%';
       el.classList.toggle('idle', n.w <= mf);
-      // Anteil gelb = priorisiert zugeteilte PV-Leistung, Rest = Gerätefarbe.
-      const isLoad = n.kind === 'consumer' || n.key === '_rest' || n.key === '_other';
-      el.classList.toggle('pv-striped', isLoad);
+      const isLoad = isSourceConsumer(n);
+      el.classList.toggle('has-source-strip', isLoad);
+      const strip = el.querySelector('.source-strip');
+      strip.hidden = !isLoad || n.w <= 0;
       if (isLoad) {
-        const percent = Math.max(0, Math.min(100, n.pvPct || 0));
-        el.style.setProperty('--pv-pct', percent.toFixed(2) + '%');
-        el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}; Gesamt ${this._fmtW(n.w)} (größte Verbraucher zuerst)`;
+        if (n.w > 0) {
+          this._updateSourceStrip(strip, n);
+        } else {
+          strip.replaceChildren();
+        }
+        el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (größte Verbraucher zuerst)`;
       }
       el.classList.toggle('warn', !!warn);
-    };
-    // Bestehendes kleines Badge rechts im Kopf behalten; Quellenanteile nur untereinander schreiben.
-    const percentText = (w, total) => {
-      const pct = total > 0 ? 100 * w / total : 0;
-      return `${Math.round(pct)} %`;
-    };
-    const consumerBadge = n => {
-      if (n.w <= 0) return '';
-      const parts = [];
-      if (n.pvW > 0.01) parts.push(`${percentText(n.pvW, n.w)} PV`);
-      if (n.batteryW > 0.01) parts.push(`${percentText(n.batteryW, n.w)} Akku`);
-      if (n.gridW > 0.01) parts.push(`${percentText(n.gridW, n.w)} Netz`);
-      if (n.unassignedW > 0.01) parts.push(`${percentText(n.unassignedW, n.w)} offen`);
-      return parts.join('\n');
     };
     for (const n of m.left) {
       if (n.kind === 'solar') {
@@ -553,10 +600,10 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       }
     }
     for (const n of m.right) {
-      set(n, this._fmtW(n.w), n.energy != null ? `${this._fmtKwh(n.energy)} kWh heute` : '', '', consumerBadge(n), null);
+      set(n, this._fmtW(n.w), n.energy != null ? `${this._fmtKwh(n.energy)} kWh heute` : '', '', '', null);
     }
     this._updateStats(m);
-    requestAnimationFrame(() => this._drawLines());
+    requestAnimationFrame(() => { this._fitSourceLabels(); this._drawLines(); });
   }
 
   _updateStats(m) {
