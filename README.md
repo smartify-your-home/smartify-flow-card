@@ -1,6 +1,6 @@
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.6 · Karte v0.6.6**
+**Integration v0.6.7 · Karte v0.6.7**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -8,7 +8,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.6`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.7`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -30,7 +30,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.6
+/smartify_flow_card/smartify-flow-card.js?v=0.6.7
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -47,7 +47,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.6
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.7
       type: module
 ```
 
@@ -89,7 +89,7 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.6`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.6`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.7`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.7`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 
@@ -105,7 +105,17 @@ Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann
 - **Darstellung:** Klassisches oder Radiallayout mit animierten Kurven, PV-Verbindungen in dunklem Gelb, Theme-Textfarben, 20 % kleineren Einheiten, Theme-Rundungen und einstellbarer Hintergrundtransparenz.
 - **Energiestatistik:** Gesamtenergiezähler werden für Tageswerte verwendet; PV-Eigenverbrauchsquote = `(PV-Ertrag − Einspeisung) / PV-Ertrag × 100`. Bei Akku ist die Autarkie ohne zusätzliche Energiezähler nur eine Näherung.
 
-## Einheitliche Entitäten- und Icon-Suche (ab v0.6.6)
+## Quellenzuordnung und Linienbreite (ab v0.6.7)
+
+Unter **Karte bearbeiten → Darstellung & Animation** stehen drei zusätzliche Funktionsgruppen zur Verfügung:
+
+- **Quellenverteilung:** `smallest_first` (Standard) verteilt PV zuerst an den kleinsten Verbraucher und deckt danach verbleibende Watt mit Akku/Netz. `proportional` verteilt den rechnerischen PV-/Akku-/Netz-Mix gleichmäßig anteilig auf alle erfassten Verbraucher. Beide Modelle begrenzen die Zuteilung auf die tatsächlich verfügbaren Quellenbudgets und den erfassten Geräteverbrauch. Nicht gedeckte Leistungen bleiben als „offen“ ausgewiesen; die Zuordnung ist ein Visualisierungsmodell, keine physikalische Einzelmessung.
+- **Skalierung der Linienbreite:** `sqrt` (Standard ab 0.6.7) hebt kleinere Energieflüsse mit der Quadratwurzel-Skalierung hervor; `linear` nutzt eine lineare Skalierung.
+- **Minimale/Maximale Linienbreite:** `line_width_min: 1.5` und `line_width_max: 4.5` (Pixel, standardmäßig). Werte werden auf den Bereich 0,5–20 px begrenzt, und die maximale Breite wird nie kleiner als die minimale verwendet.
+
+Die Einstellungen wirken in der klassischen und radialen Ansicht. Die bestehenden Animationszeiten werden bei Sensorupdates nicht ständig zurückgesetzt. Bestehende Karten erhalten weiterhin das bisherige PV-Zuordnungsmodell, aber standardmäßig die neue Quadratwurzel-Optik der Linien; wer die bisherige lineare Optik bevorzugt, wählt `line_scale: linear`. Ein Beispiel für YAML: `allocation: proportional`, `line_scale: sqrt`, `line_width_min: 1.5`, `line_width_max: 6`.
+
+## Einheitliche Entitäten- und Icon-Suche (ab v0.6.7)
 
 **Alle Entitäten-Picker im Karteneditor und in den Plus-/Minus-Verbraucher-Popups** nutzen dieselbe HA-Vorschlagsliste mit Live-Suche nach Anzeigename und Entity-ID, Einheit, Entitätsicon, Pfeiltasten/Enter und scrollbarerer Vorschlagsliste für Maus und Touch. Die Browser-`datalist` wurde aus den Verbraucherdialogen entfernt. Beim Bearbeiten werden Entitäten im Popup **nur vorgemerkt**; erst „Änderungen speichern“ übernimmt sie in die Lovelace-Kartenkonfiguration.
 
