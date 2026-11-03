@@ -1184,7 +1184,12 @@ class SmartifyFlowCardEditor extends HTMLElement {
       this._closePickers(obj); update();
     });
     input.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { dropdown.hidden = true; input.value = this._display(obj.current, mode); }
+      if (e.key === 'Escape' && !dropdown.hidden) {
+        e.preventDefault(); e.stopPropagation();
+        dropdown.hidden = true;
+        input.value = this._display(obj.current, mode);
+        if (obj.preview) obj.preview.setAttribute('icon', obj.current || 'mdi:help-circle-outline');
+      }
       if (e.key === 'ArrowDown' && !dropdown.hidden) { e.preventDefault(); obj.active = Math.min(obj.active + 1, obj.filtered.length - 1); this._drawSuggestions(obj); }
       if (e.key === 'ArrowUp' && !dropdown.hidden) { e.preventDefault(); obj.active = Math.max(0, obj.active - 1); this._drawSuggestions(obj); }
       if (e.key === 'Enter') {
@@ -1519,7 +1524,11 @@ class SmartifyFlowCardEditor extends HTMLElement {
     hint.textContent = 'Am Griff ziehen (Maus oder Touch) oder mit ↑ / ↓ verschieben. Änderungen gelten im klassischen und radialen Layout und werden mit der Karte gespeichert.';
     const list = document.createElement('div'); list.className = 'source-order-list';
     const names = { _solar: 'PV', _battery: 'Akku', _grid: 'Netz' };
-    const icons = { _solar: 'mdi:solar-power', _battery: 'mdi:home-battery', _grid: 'mdi:transmission-tower' };
+    const icons = {
+      _solar: this._config.solar?.icon || 'mdi:solar-power',
+      _battery: this._config.battery?.icon || 'mdi:home-battery',
+      _grid: this._config.grid?.icon || 'mdi:transmission-tower',
+    };
     const hasBattery = !!this._config.battery?.power;
     const available = hasBattery ? SFC_SOURCE_KEYS : SFC_SOURCE_KEYS.filter(key => key !== '_battery');
     let order = sfcSourceOrder(this._config.source_order, available);
