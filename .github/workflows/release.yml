@@ -1,0 +1,69 @@
+name: Publish versioned release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - custom_components/smartify_flow_card/manifest.json
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flow-card-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate release metadata
+        run: python scripts/check_version.py
+      - name: Unit tests and syntax checks
+        run: |
+          python -m unittest discover -s tests -v
+          python -m compileall -q custom_components
+          node --check custom_components/smartify_flow_card/frontend/smartify-flow-card.js
+      - name: Publish immutable version tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(python scripts/check_version.py | sed -n 's/^Version metadata consistent: //p')
+          tag="v${version}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists. Never overwrite an existing release."
+            exit 0
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists without a release. Manual review required."
+            exit 1
+          fi
+          python - "$version" <<'PY'
+          import pathlib
+          import re
+          import sys
+          version = re.escape(sys.argv[1])
+          changelog = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          match = re.search(
+              rf"(?ms)^##\s+v?{version}(?:\s|$)(.*?)(?=^##\s+|\Z)",
+              changelog,
+          )
+          if not match:
+              raise SystemExit("Missing release notes for " + sys.argv[1])
+          pathlib.Path("/tmp/release-notes.md").write_text(match.group(1).strip() + "\n", encoding="utf-8")
+          PY
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$tag" --notes-file /tmp/release-notes.md
+          echo "Published $tag"
