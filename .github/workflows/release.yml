@@ -45,6 +45,7 @@ jobs:
           node tests/test_source_order.cjs
           node tests/test_consumer_modal.cjs
           node tests/test_picker_types.cjs
+          node tests/test_allocation_visuals.cjs
       - name: Publish immutable version tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
