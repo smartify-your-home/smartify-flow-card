@@ -1,19 +1,16 @@
-// Keep the consumer source badge as the original compact header pill.
-// Run with: node tests/test_badge_layout.cjs
+// Regression: source percentages belong in compact colored footer, not header badge.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const code = fs.readFileSync(path.join(__dirname, '..', 'custom_components', 'smartify_flow_card', 'frontend', 'smartify-flow-card.js'), 'utf8');
-assert.match(code, /<span class="nm">\$\{this\._esc\(n\.name\)\}<\/span><span class="bd"><\/span><\/div>/,
-  'the badge remains inside the title header, at the top right');
-assert.match(code, /<div class="val"><\/div><div class="sub"><\/div>/,
-  'the badge is no longer placed between power and energy values');
-const style = code.match(/(?:^|\n)\.bd\{([^}]*)\}/)?.[1] || '';
-assert.match(style, /width:auto/, 'the badge has intrinsic width, not a full-width bar');
-assert.doesNotMatch(style, /width:100%/, 'the badge must never span the full tile');
-assert.match(style, /white-space:pre/, 'each source remains on its own line');
-assert.match(style, /text-align:left/, 'all badge lines are left aligned, even when only one source is shown');
-assert.doesNotMatch(style, /text-align:center/, 'badge must not center individual percentages');
-assert.ok(code.includes('Math.round(pct)'), 'source percentages are whole-number rounded');
-assert.match(code, /return parts\.join\('\\n'\)/, 'source percentages stack inside the badge');
-console.log('Compact source badge layout tests passed');
+
+assert.match(code, /<div class="source-strip" hidden><\/div>/, 'source strip is part of each node');
+assert.match(code, /\.node\.has-source-strip::after\{display:none\}/, 'old color-only pseudo strip hidden on consumers');
+assert.match(code, /--sf-source-height,22px/, 'source bar is high enough for labels');
+assert.match(code, /\.flow\.radial \.node\.has-source-strip\{padding-bottom:/, 'radial reserves footer text space');
+assert.match(code, /this\._updateSourceStrip\(strip, n\)/, 'segments are populated from each device');
+assert.match(code, /this\._fitSourceLabels\(\)/, 'tiny segment labels are measured before display');
+assert.match(code, /label\.hidden = true/, 'tiny segments cannot overlap adjacent labels');
+assert.match(code, /Math\.round\(pct\)/, 'percentage labels are rounded to zero decimals');
+assert.match(code, /el\.querySelector\('\.bd'\)\.textContent = isSourceConsumer\(n\) \? ''/, 'consumer header badge is empty');
+console.log('Color-segment footer layout tests passed');
