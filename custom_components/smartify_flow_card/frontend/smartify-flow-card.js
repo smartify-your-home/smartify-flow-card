@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.2';
+const SFC_VERSION = '0.6.3';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -30,24 +30,38 @@ function sfcSortLoadTiles(tiles) {
 }
 
 function sfcAllocateSources(candidates, supply) {
+  // PV allocation is intentionally small-to-large. Battery/grid supply
+  // fills the remaining needs afterwards and never exceeds source budgets.
+  // The visual tile order is independent of allocation priority.
   const allocations = new Map();
   const remaining = {
     pv: Math.max(0, Number(supply.pv) || 0),
     battery: Math.max(0, Number(supply.battery) || 0),
     grid: Math.max(0, Number(supply.grid) || 0),
   };
-  const sorted = [...candidates].sort((a, b) => b.w - a.w || a.key.localeCompare(b.key));
-  for (const candidate of sorted) {
-    let need = Math.max(0, Number(candidate.w) || 0);
-    const shares = { pv: 0, battery: 0, grid: 0, unassigned: 0 };
-    for (const source of ['pv', 'battery', 'grid']) {
-      const assigned = Math.min(need, remaining[source]);
-      shares[source] = assigned;
+  const consumers = candidates.map(item => ({
+    key: item.key, w: Math.max(0, Number(item.w) || 0),
+  }));
+  for (const item of consumers) {
+    allocations.set(item.key, { pv: 0, battery: 0, grid: 0, unassigned: item.w });
+  }
+  const bySmallest = [...consumers].sort((a, b) => a.w - b.w || String(a.key).localeCompare(String(b.key));
+  for (const item of bySmallest) {
+    const share = allocations.get(item.key);
+    const assigned = Math.min(share.unassigned, remaining.pv);
+    share.pv = assigned;
+    share.unassigned -= assigned;
+    remaining.pv -= assigned;
+  }
+  const byLargest = [...consumers].sort((a, b) => b.w - a.w || String(a.key).localeCompare(String(b.key));
+  for (const source of ['battery', 'grid']) {
+    for (const item of byLargest) {
+      const share = allocations.get(item.key);
+      const assigned = Math.min(share.unassigned, remaining[source]);
+      share[source] = assigned;
+      share.unassigned -= assigned;
       remaining[source] -= assigned;
-      need -= assigned;
     }
-    shares.unassigned = Math.max(0, need);
-    allocations.set(candidate.key, shares);
   }
   return allocations;
 }
@@ -279,8 +293,8 @@ class SmartifyFlowCard extends HTMLElement {
     if (overflow.length) right.push({ key: '_other', kind: 'load', name: `Sonstige (${overflow.length})`, icon: 'mdi:dots-horizontal-circle-outline', color: SFC_COL.other, w: overflow.reduce((a, x) => a + x.w, 0) });
     const rest = Math.max(total - measured, 0);
     if (c.show_rest && (rest > mp || (keepRest && rest > mp * 0.5))) { right.push({ key: '_rest', kind: 'load', name: c.rest_name, icon: 'mdi:home-outline', color: SFC_COL.rest, w: rest, entity: c.load_total }); this._shown.add('_rest'); }
-    // Alle Stromquellen teilen sich ein jeweils begrenztes Wattbudget.
-    // Größte Einzelverbraucher zuerst; keine Quelle darf doppelt vergeben werden.
+    // PV-Budget vom kleinsten zum größten Einzelverbraucher zuweisen.
+    // Akku und Netz decken danach die übrigen Leistungen; keine Doppelzuordnung.
     const candidates = list.map(x => ({ key: x.id, w: x.w }));
     if (c.show_rest && right.some(n => n.key === '_rest') && rest > 0) {
       candidates.push({ key: '_rest', w: rest });
@@ -656,7 +670,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         } else {
           strip.replaceChildren();
         }
-        el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (größte Verbraucher zuerst)`;
+        el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (PV: kleinste Verbraucher zuerst)`;
       }
       el.classList.toggle('warn', !!warn);
     };
