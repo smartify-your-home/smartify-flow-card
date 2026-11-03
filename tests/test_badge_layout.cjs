@@ -13,4 +13,11 @@ assert.match(code, /this\._fitSourceLabels\(\)/, 'tiny segment labels are measur
 assert.match(code, /label\.hidden = true/, 'tiny segments cannot overlap adjacent labels');
 assert.match(code, /Math\.round\(pct\)/, 'percentage labels are rounded to zero decimals');
 assert.match(code, /el\.querySelector\('\.bd'\)\.textContent = isSourceConsumer\(n\) \? ''/, 'consumer header badge is empty');
+assert.match(code, /\.source-segment\.grid\{background:var\(--c\)/, 'grid segment uses the individual device color');
+assert.match(code, /strip\.dataset\.sources !== signature/, 'rebuild segments only when source identities change');
+assert.match(code, /if \(label\.textContent !== display\)/, 'avoid unnecessary label writes');
+assert.match(code, /context\.measureText\(/, 'use stable canvas text measurement');
+assert.match(code, /required \+ 3/, 'hysteresis prevents flashing around narrow-label threshold');
+assert.match(code, /required - 3/, 'opposite hysteresis threshold applied when visible');
+assert.doesNotMatch(code, /label\.hidden = false;\s*\/\/ Tiny segments/, 'old unconditional visibility reset removed');
 console.log('Color-segment footer layout tests passed');
