@@ -1,3 +1,10 @@
+## v0.6.1 – Gerätefarben wiederhergestellt, Prozentflackern behoben (2026-11-03)
+
+- Netzsegment im unteren Quellanteilsstreifen verwendet wieder die **individuelle Gerätefarbe**, auch bei manuell gesetzten Verbraucherfarben. PV bleibt gelb und Akkustrom grün.
+- Prozentanzeigen flackern weniger: Die vorhandenen Segment- und Text-Elemente bleiben bei Leistungsupdates erhalten, solange sich die Quellen nicht ändern. Nur notwendige Werte werden geändert.
+- Die Beschriftungsbreite wird stabil über Textmessung und Hysterese geprüft; ein schmaler Netzanteil kann nicht mehr bei jedem Update zwischen sichtbar und ausgeblendet wechseln.
+- Tests für Gerätefarbe, DOM-Stabilität und Text-Hysterese ergänzt. Quellenzuordnung, Dashboard-Konfiguration, 22-px-Streifen sowie Listen- und Radiallayout bleiben erhalten. HA-Livetest ausständig.
+
 ## v0.6.0 – Prozentwerte in segmentiertem Farbstreifen (2026-11-03)
 
 - Die bisherige 4-px-PV-Akzentlinie der Verbraucherkacheln wird durch einen **22 px hohen segmentierten Fußstreifen** ersetzt: PV, Akku, Netz, gegebenenfalls offener Rest.
