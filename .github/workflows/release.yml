@@ -35,6 +35,7 @@ jobs:
           python -m unittest discover -s tests -v
           python -m compileall -q custom_components
           node --check custom_components/smartify_flow_card/frontend/smartify-flow-card.js
+          node tests/test_power_allocation.cjs
       - name: Publish immutable version tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
