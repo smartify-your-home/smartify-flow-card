@@ -298,13 +298,13 @@ class SmartifyFlowCard extends HTMLElement {
     const shown = vis.slice(0, c.max_consumers), overflow = vis.slice(c.max_consumers);
 
     const left = [{ key: '_solar', kind: 'solar', name: s.name || 'PV', icon: s.icon || 'mdi:solar-power', color: SFC_COL.solar, w: P, entity: s.power }];
-    if (b && b.power) left.push({ key: '_battery', kind: 'battery', name: b.name || 'Speicher', icon: 'mdi:home-battery', color: SFC_COL.battery, w: Bd || Bc, charging: Bc > 0, soc, entity: b.power });
+    if (b && b.power) left.push({ key: '_battery', kind: 'battery', name: b.name || 'Speicher', icon: b.icon || 'mdi:home-battery', color: SFC_COL.battery, w: Bd || Bc, charging: Bc > 0, soc, entity: b.power });
     // One network tile: name, symbol, live power and flow follow the actual direction.
     // Swap the former import/export tower glyphs to match the requested visual direction.
     const gridState = I > c.min_flow ? 'import' : E > c.min_flow ? 'export' : 'neutral';
     left.push({ key: '_grid', kind: 'grid', gridState,
       name: gridState === 'import' ? (g.import_name || 'Netzbezug') : gridState === 'export' ? (g.export_name || 'Netzbelieferung') : 'Netz',
-      icon: gridState === 'import' ? 'mdi:transmission-tower-export' : gridState === 'export' ? 'mdi:transmission-tower-import' : 'mdi:transmission-tower',
+      icon: g.icon || (gridState === 'import' ? 'mdi:transmission-tower-export' : gridState === 'export' ? 'mdi:transmission-tower-import' : 'mdi:transmission-tower'),
       color: SFC_COL.grid, w: gridState === 'import' ? I : gridState === 'export' ? E : 0,
       entity: hasBalance ? g.saldo_power : (gridState === 'export' ? g.export_power : g.import_power) });
     // Persisted source order affects only visualization, not energy attribution.
@@ -1711,6 +1711,7 @@ class SmartifyFlowCardEditor extends HTMLElement {
     this._picker(sec,'PV-Prognose heute',['solar','forecast_today'],'energy');
     this._picker(sec,'PV-Prognose verbleibend',['solar','forecast_remaining'],'energy');
     this._input(sec,'Name',['solar','name']);
+    this._picker(sec,'PV-Icon',['solar','icon'],'icon','Icon nach Namen suchen, Symbol auswählen oder mdi:Iconname eingeben.');
     sec = this._section('Stromnetz', 'mdi:transmission-tower');
     // For existing configs, default to separate sensors unless a saldo sensor exists.
     const gridMode = this._config.grid.mode || (this._config.grid.saldo_power ? 'saldo' : 'separate');
@@ -1730,10 +1731,12 @@ class SmartifyFlowCardEditor extends HTMLElement {
     }
     this._picker(sec,'Netzbezug Gesamtenergiezähler (kWh)',['grid','import_total'],'energy');
     this._picker(sec,'Einspeisung Gesamtenergiezähler (kWh)',['grid','export_total'],'energy');
+    this._picker(sec,'Netz-Icon (optional)',['grid','icon'],'icon','Ohne eigene Auswahl wechselt das Netzsymbol automatisch mit der Stromrichtung.');
     sec = this._section('Batteriespeicher', 'mdi:home-battery');
     this._picker(sec,'Batterie-Leistung',['battery','power'],'power');
     this._picker(sec,'Ladezustand (SoC)',['battery','soc'],'soc');
     this._input(sec,'Name',['battery','name']);
+    this._picker(sec,'Akku-Icon',['battery','icon'],'icon','Icon nach Namen suchen und aus den Symbolvorschlägen auswählen.');
     this._toggle(sec,'Vorzeichen der Batterieleistung umkehren',['battery','invert']);
     sec = this._section('Verbraucher', 'mdi:power-plug');
     this._picker(sec,'Verbraucher-Label',['label'],'label','Nur mit diesem Label markierte Sensoren werden angezeigt.');
