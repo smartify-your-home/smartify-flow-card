@@ -1,3 +1,12 @@
+## v0.6.2 – Flackern der gesamten Karte / Radialmodus reduzieren (2026-11-03)
+
+- Keine vollständigen Neuaufbauten aller Verbraucher- und Quellenkacheln mehr, nur weil sich Reihenfolge oder Leistung ändern. Bestehende DOM-Elemente, Klick-Handler, Gerätefarben und Quellen-Segmente bleiben erhalten.
+- Radialansicht behält bei Leistungsschwankungen eine stabile Geräte-Anordnung; wirkliche Änderungen an sichtbaren Geräten werden weiterhin übernommen.
+- Sensor- und ResizeObserver-Zeichenanforderungen werden pro Animation-Frame gebündelt.
+- Unveränderte Positionen, SVG-Pfade, SVG-ViewBox sowie große Leistungs- und Statistikanzeigen werden nicht unnötig neu beschrieben.
+- SVG-Strichanimationen behalten ihre Laufzeit, statt bei jeder Leistungsschwankung neu getaktet zu werden.
+- Regressionstest für DOM-Reuse, Radial-Anordnung und Animationen. Kein echter Home-Assistant-Livetest erfolgt; solche Tests bleiben notwendig.
+
 ## v0.6.1 – Gerätefarben wiederhergestellt, Prozentflackern behoben (2026-11-03)
 
 - Netzsegment im unteren Quellanteilsstreifen verwendet wieder die **individuelle Gerätefarbe**, auch bei manuell gesetzten Verbraucherfarben. PV bleibt gelb und Akkustrom grün.
