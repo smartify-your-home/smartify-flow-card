@@ -1,0 +1,25 @@
+// Verify that frequent HA updates don't rebuild the whole radial diagram.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const code = fs.readFileSync(path.join(__dirname, '..', 'custom_components', 'smartify_flow_card', 'frontend', 'smartify-flow-card.js'), 'utf8');
+const range = (from, to) => code.slice(code.indexOf(from), code.indexOf(to, code.indexOf(from)));
+const update = range('  _update() {', '  _updateStats(m)');
+const sync = range('  _syncNodes(container, nodes) {', '  _update() {');
+const radial = range('  _layoutRadial() {', '  _drawLines() {');
+const draw = range('  _drawLines() {', '\n}\n\nif (!customElements');
+assert.match(update, /this\._syncNodes\(this\._leftEl, m\.left\)/);
+assert.match(update, /this\._syncNodes\(this\._rightEl, m\.right\)/);
+assert.doesNotMatch(update, /\.innerHTML = m\.(?:left|right)\.map/, 'never recreate all tiles on sensor update');
+assert.match(sync, /if \(!desired\.has\(key\)\)/, 'remove only disappeared tiles');
+assert.match(sync, /if \(!el\) \{/, 'create only genuinely new tiles');
+assert.match(sync, /if \(el !== anchor\) container\.insertBefore\(el, anchor\)/, 'reorder only if changed');
+assert.match(code, /this\._radialOrder = stable/, 'stable radial order survives fluctuating power');
+assert.match(code, /this\._radialOrder = \[\]/, 'reset radial history on card config changes');
+assert.match(code, /ResizeObserver\(\(\) => this\._scheduleDraw\(\)\)/, 'resize is coalesced');
+assert.match(code, /if \(this\._drawRaf \|\| !this\.isConnected\) return/, 'only one animation frame per update');
+assert.match(radial, /if \(el\.style\.left !== left\)/, 'avoid writing unchanged tile positions');
+assert.match(radial, /if \(el\.style\.top !== top\)/, 'avoid writing unchanged tile positions');
+assert.match(draw, /if \(p\.path\.getAttribute\('d'\) !== d\)/, 'avoid rewriting unchanged SVG curves');
+assert.match(draw, /if \(p\.dur === null\)/, 'dash animation duration stays stable between power updates');
+console.log('Radial no-flicker regression checks passed');
