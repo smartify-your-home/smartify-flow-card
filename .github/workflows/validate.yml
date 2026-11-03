@@ -28,3 +28,4 @@ jobs:
           node tests/test_font_scale.cjs
           node tests/test_radial_stability.cjs
           node tests/test_source_order.cjs
+          node tests/test_consumer_modal.cjs
