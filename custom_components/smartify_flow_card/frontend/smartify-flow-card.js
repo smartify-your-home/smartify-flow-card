@@ -75,6 +75,7 @@ class SmartifyFlowCard extends HTMLElement {
     this._energyTs = 0;
     this._energyDay = '';
     this._shown = new Set();
+    this._radialOrder = [];
     this._paths = new Map();
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
     this._build();
