@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.4';
+const SFC_VERSION = '0.6.5';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -175,7 +175,8 @@ class SmartifyFlowCard extends HTMLElement {
   // Combine manually configured and label-discovered power sensors without duplicates.
   _consumerEntities() {
     const explicit = Object.keys(this._c.consumers || {}).filter(id => id.startsWith('sensor.'));
-    return [...new Set([...explicit, ...this._labelEntities()])];
+    const excluded = new Set(this._c.excluded_consumers || []);
+    return [...new Set([...explicit, ...this._labelEntities()])].filter(id => !excluded.has(id));
   }
   _ov(id) { return (this._c.consumers || {})[id] || {}; }
   _name(id) {
@@ -1225,34 +1226,177 @@ class SmartifyFlowCardEditor extends HTMLElement {
     if (this._pickers.some(p => !p.dropdown.hidden)) return;
   }
   _consumerList(section) {
-    const box = document.createElement('div'); box.className = 'consumers'; section.append(box);
-    const make = () => {
-      box.replaceChildren();
-      for (const id of Object.keys(this._config.consumers || {})) {
-        const card = document.createElement('div'); card.className = 'consumer'; box.append(card);
-        const heading = document.createElement('div'); heading.className = 'consumer-head';
-        const name = document.createElement('b'); name.textContent = this._display(id, 'entity');
-        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'remove'; remove.textContent = 'Entfernen';
-        remove.addEventListener('click', () => { delete this._config.consumers[id]; this._emit(); this._render(); });
-        heading.append(name, remove); card.append(heading);
-        for (const prop of ['name', 'icon', 'color', 'energy', 'active_badge']) {
-          if (prop === 'energy') this._picker(card, 'Gesamtenergiezähler (kWh, heute automatisch berechnet)', ['consumers', id, prop], 'energy');
-          else this._input(card, ({ name:'Anzeigename', icon:'MDI-Icon', color:'Farbe (CSS / HEX)', active_badge:'Aktiv-Badge' })[prop], ['consumers', id, prop]);
+    // All edits are made in the Lovelace editor: _emit persists the
+    // complete card configuration, unlike ad-hoc dashboard DOM mutations.
+    const wrap = document.createElement('div');
+    wrap.className = 'consumer-manager';
+    const header = document.createElement('div');
+    header.className = 'consumer-manager-header';
+    const caption = document.createElement('b'); caption.textContent = 'Verbraucher verwalten';
+    const add = document.createElement('button');
+    add.type = 'button'; add.className = 'consumer-manager-add';
+    add.setAttribute('aria-label', 'Verbraucher hinzufügen');
+    add.title = 'Verbraucher hinzufügen';
+    const addIcon = document.createElement('ha-icon'); addIcon.setAttribute('icon', 'mdi:plus');
+    add.append(addIcon);
+    header.append(caption, add);
+    const cards = document.createElement('div'); cards.className = 'consumer-manager-cards';
+    const help = document.createElement('small');
+    help.textContent = 'Plus: Neuen Verbraucher anlegen. Minus: Einstellungen öffnen und bei Bedarf löschen. Änderungen werden mit der Dashboard-Karte gespeichert.';
+    wrap.append(header, cards, help);
+    section.append(wrap);
+    const excluded = () => new Set(this._config.excluded_consumers || []);
+    const available = () => {
+      const labels = new Set([String(this._config.label || 'verbraucher').toLowerCase()]);
+      for (const entry of this._labels()) {
+        if (entry.label.toLowerCase() === String(this._config.label || 'verbraucher').toLowerCase() ||
+            entry.id.toLowerCase() === String(this._config.label || 'verbraucher').toLowerCase()) {
+          labels.add(entry.id.toLowerCase());
+          labels.add(entry.label.toLowerCase());
         }
       }
+      const labeled = Object.values(this._hass?.entities || {})
+        .filter(e => e?.entity_id?.startsWith('sensor.') &&
+          (e.labels || []).some(l => labels.has(String(l).toLowerCase())))
+        .map(e => e.entity_id)
+        .filter(id => this._matchingEntities('power').some(e => e.id === id));
+      return [...new Set([...Object.keys(this._config.consumers || {}), ...labeled])]
+        .filter(id => !excluded().has(id));
     };
-    make();
-    const row = document.createElement('div'); row.className = 'addrow'; section.append(row);
-    this._picker(row, 'Verbraucher hinzufügen (auch ohne Label)', ['_new_consumer'], 'power');
-    const add = document.createElement('button'); add.type = 'button'; add.className = 'add'; add.textContent = '+ Verbraucher anpassen';
-    add.addEventListener('click', () => {
-      const id = this._config._new_consumer;
-      if (!id || !id.startsWith('sensor.')) return;
-      this._config.consumers[id] ||= {};
-      delete this._config._new_consumer;
-      this._emit(); this._render();
-    });
-    section.append(add);
+    const render = () => {
+      cards.replaceChildren();
+      const ids = available();
+      if (!ids.length) {
+        const empty = document.createElement('small');
+        empty.textContent = 'Noch keine Verbraucher konfiguriert.';
+        cards.append(empty);
+      }
+      for (const id of ids) {
+        const ov = this._config.consumers?.[id] || {};
+        const tile = document.createElement('div'); tile.className = 'consumer-manager-tile';
+        const icon = document.createElement('ha-icon'); icon.setAttribute('icon', ov.icon || 'mdi:power-plug');
+        const name = document.createElement('span');
+        name.textContent = ov.name || this._display(id, 'entity');
+        name.title = id;
+        const edit = document.createElement('button');
+        edit.type = 'button'; edit.className = 'consumer-manager-minus';
+        edit.setAttribute('aria-label', name.textContent + ' bearbeiten oder entfernen');
+        edit.title = 'Bearbeiten / entfernen';
+        const minus = document.createElement('ha-icon'); minus.setAttribute('icon', 'mdi:minus');
+        edit.append(minus);
+        edit.addEventListener('click', () => open(id));
+        tile.append(icon, name, edit); cards.append(tile);
+      }
+    };
+    const open = (id = null) => {
+      // Draft fields are kept local until Save is clicked, preventing partial
+      // edits or popup cancellation from modifying the dashboard config.
+      const original = id && this._config.consumers?.[id] || {};
+      const overlay = document.createElement('div'); overlay.className = 'consumer-modal-overlay';
+      const dialog = document.createElement('div');
+      dialog.className = 'consumer-modal';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      dialog.setAttribute('aria-label', id ? 'Verbraucher bearbeiten' : 'Verbraucher hinzufügen');
+      const title = document.createElement('h3');
+      title.textContent = id ? 'Verbraucher bearbeiten' : 'Neuen Verbraucher hinzufügen';
+      dialog.append(title);
+      const options = this._matchingEntities('power');
+      const formFields = {};
+      const field = (key, title, value, type = 'text', hint = '') => {
+        const container = document.createElement('div'); container.className = 'field';
+        const lbl = document.createElement('label'); lbl.textContent = title;
+        const input = document.createElement('input');
+        input.type = type;
+        input.value = value || '';
+        input.setAttribute('aria-label', title);
+        formFields[key] = input;
+        container.append(lbl, input);
+        if (hint) { const note = document.createElement('small'); note.textContent = hint; container.append(note); }
+        dialog.append(container);
+        return input;
+      };
+      const entity = field('entity', 'Leistungssensor (W/kW)', id || '', 'text', 'Nach Namen oder Entity-ID suchen. Nur Leistungssensoren sind zulässig.');
+      entity.setAttribute('list', 'sfc-consumer-power-' + this._instanceId);
+      const dataList = document.createElement('datalist'); dataList.id = 'sfc-consumer-power-' + this._instanceId;
+      for (const option of options) {
+        const opt = document.createElement('option');
+        opt.value = option.id; opt.label = option.label;
+        dataList.append(opt);
+      }
+      dialog.append(dataList);
+      field('name', 'Anzeigename', original.name || '');
+      field('icon', 'Icon (mdi:...)', original.icon || '');
+      field('color', 'Gerätefarbe (HEX/CSS)', original.color || '');
+      const energy = field('energy', 'Gesamtenergiezähler (kWh, optional)', original.energy || '');
+      const energyList = document.createElement('datalist');
+      energyList.id = 'sfc-consumer-energy-' + this._instanceId;
+      energy.setAttribute('list', energyList.id);
+      for (const option of this._matchingEntities('energy')) {
+        const opt = document.createElement('option'); opt.value = option.id; opt.label = option.label;
+        energyList.append(opt);
+      }
+      dialog.append(energyList);
+      const error = document.createElement('small'); error.className = 'consumer-modal-error';
+      error.setAttribute('role', 'alert');
+      dialog.append(error);
+      const buttons = document.createElement('div'); buttons.className = 'consumer-modal-actions';
+      const cancel = document.createElement('button'); cancel.type = 'button';
+      cancel.textContent = 'Abbrechen';
+      const save = document.createElement('button'); save.type = 'button';
+      save.className = 'consumer-modal-save';
+      save.textContent = id ? 'Änderungen speichern' : 'Verbraucher hinzufügen';
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.className = 'consumer-modal-remove';
+      remove.textContent = 'Verbraucher entfernen';
+      remove.hidden = !id;
+      const close = () => { overlay.remove(); };
+      const onKey = e => {
+        if (e.key === 'Escape') { e.stopPropagation(); close(); }
+      };
+      overlay.addEventListener('keydown', onKey);
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+      cancel.addEventListener('click', close);
+      save.addEventListener('click', () => {
+        const nextId = entity.value.trim();
+        if (!options.some(option => option.id === nextId)) {
+          error.textContent = 'Bitte einen gültigen Home-Assistant-Leistungssensor auswählen.'; return;
+        }
+        if (nextId !== id && this._config.consumers?.[nextId]) {
+          error.textContent = 'Dieser Verbraucher ist bereits manuell konfiguriert.'; return;
+        }
+        const next = { ...original };
+        for (const key of ['name', 'icon', 'color', 'energy']) {
+          const value = formFields[key].value.trim();
+          if (value) next[key] = value; else delete next[key];
+        }
+        this._config.consumers ||= {};
+        if (id && id !== nextId) {
+          delete this._config.consumers[id];
+          // If a label adds the old entity automatically, hide it so a
+          // sensor change does not leave a duplicate row.
+          this._config.excluded_consumers = [...new Set([...(this._config.excluded_consumers || []), id])];
+        }
+        this._config.consumers[nextId] = next;
+        this._config.excluded_consumers = (this._config.excluded_consumers || []).filter(x => x !== nextId);
+        close(); render(); this._emit();
+      });
+      remove.addEventListener('click', () => {
+        if (!id || !window.confirm('Verbraucher „' + (original.name || id) + '“ wirklich aus dieser Karte entfernen?')) return;
+        delete this._config.consumers[id];
+        this._config.excluded_consumers = [...new Set([...(this._config.excluded_consumers || []), id])];
+        close(); render(); this._emit();
+      });
+      buttons.append(cancel, save);
+      if (id) buttons.prepend(remove);
+      dialog.append(buttons);
+      overlay.append(dialog);
+      this.shadowRoot.append(overlay);
+      entity.focus();
+    };
+    this._instanceId ||= String(Math.floor(Math.random() * 1e9));
+    add.addEventListener('click', () => open());
+    render();
   }
   _backupSection() {
     const sec = this._section('Sicherung & Wiederherstellung', 'mdi:content-save-cog-outline');
@@ -1484,6 +1628,21 @@ class SmartifyFlowCardEditor extends HTMLElement {
       .toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--divider-color)}
       .consumer{padding:12px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);margin:10px 0;background:var(--secondary-background-color)}
       .consumer-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;overflow-wrap:anywhere}.consumer-head b{font-size:12px}
+      .consumer-manager{position:relative;display:grid;gap:8px}
+      .consumer-manager-header{display:flex;align-items:center;justify-content:space-between}
+      .consumer-manager-cards{display:grid;gap:6px}
+      .consumer-manager-tile{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);min-width:0}
+      .consumer-manager-tile span{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:600}
+      .consumer-manager-add,.consumer-manager-minus{display:grid;place-items:center;flex:none;width:32px;height:32px;padding:0;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);color:var(--primary-text-color);cursor:pointer}
+      .consumer-manager-add{background:var(--primary-color);color:var(--text-primary-color,#fff)}
+      .consumer-modal-overlay{position:fixed;inset:0;z-index:500;background:#0009;display:grid;place-items:center;padding:12px}
+      .consumer-modal{box-sizing:border-box;width:min(100%,440px);max-height:90vh;overflow-y:auto;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:18px;box-shadow:0 8px 30px #0004}
+      .consumer-modal-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+      .consumer-modal-actions button{border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:9px;cursor:pointer;background:var(--secondary-background-color);color:var(--primary-text-color)}
+      .consumer-modal-actions .consumer-modal-save{background:var(--primary-color);color:var(--text-primary-color,#fff)}
+      .consumer-modal-actions .consumer-modal-remove{color:var(--error-color,#e53935);margin-right:auto}
+      .consumer-modal-error{display:block;color:var(--error-color,#e53935);min-height:1.2em}
+      
       .source-order-list{display:flex;flex-direction:column;gap:6px}
       .source-order-row{display:flex;align-items:center;gap:9px;padding:5px 8px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);min-height:42px}
       .source-order-row>span{flex:1;font-weight:600}
