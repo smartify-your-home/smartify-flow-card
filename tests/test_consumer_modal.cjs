@@ -1,0 +1,23 @@
+// Regression checks for the editor-side +/- consumer manager and persistence.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const code = fs.readFileSync(path.join(__dirname,'..','custom_components','smartify_flow_card','frontend','smartify-flow-card.js'),'utf8');
+assert.match(code, /_consumerList\(section\) \{/, 'consumer editor manager exists');
+assert.match(code, /consumer-manager-add/, 'plus button exists');
+assert.match(code, /consumer-manager-minus/, 'minus button exists');
+assert.match(code, /edit\.addEventListener\('click', \(\) => open\(id\)\)/, 'minus opens editing, not immediate deletion');
+assert.match(code, /dialog\.setAttribute\('role', 'dialog'\)/, 'accessible popup');
+assert.match(code, /Leistungssensor \(W\/kW\)/, 'editable power entity');
+assert.match(code, /Gesamtenergiezähler \(kWh, optional\)/, 'editable energy sensor');
+assert.match(code, /Anzeigename/, 'name editable');
+assert.match(code, /Gerätefarbe \(HEX\/CSS\)/, 'color editable');
+assert.match(code, /Icon \(mdi:/, 'icon editable');
+assert.match(code, /if \(!options\.some\(option => option\.id === nextId\)\)/, 'reject invalid power sensors');
+assert.match(code, /delete this\._config\.consumers\[id\]/, 'old entity mapping can be changed or removed');
+assert.match(code, /window\.confirm\(/, 'deletion requires confirmation');
+assert.match(code, /excluded_consumers/, 'label-discovered consumers can be excluded without reappearing');
+assert.match(code, /close\(\); render\(\); this\._emit\(\)/, 'only commit after user saves or confirms deletion');
+assert.match(code, /\.filter\(id => !excluded\.has\(id\)\)/, 'filter excluded entities in the rendering model');
+assert.doesNotMatch(code.slice(code.indexOf('  _consumerList(section) {'),code.indexOf('  _backupSection() {')), /window\.prompt\(/, 'no prompt UI');
+console.log('Consumer management popup and exclusion checks passed');
