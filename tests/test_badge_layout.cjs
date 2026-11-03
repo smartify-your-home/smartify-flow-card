@@ -12,5 +12,8 @@ const style = code.match(/(?:^|\n)\.bd\{([^}]*)\}/)?.[1] || '';
 assert.match(style, /width:auto/, 'the badge has intrinsic width, not a full-width bar');
 assert.doesNotMatch(style, /width:100%/, 'the badge must never span the full tile');
 assert.match(style, /white-space:pre/, 'each source remains on its own line');
+assert.match(style, /text-align:left/, 'all badge lines are left aligned, even when only one source is shown');
+assert.doesNotMatch(style, /text-align:center/, 'badge must not center individual percentages');
+assert.match(code, /return `\\$\\{Math\\.round\\(pct\\)\\} %`;/, 'source percentages are whole-number rounded');
 assert.match(code, /return parts\.join\('\\n'\)/, 'source percentages stack inside the badge');
 console.log('Compact source badge layout tests passed');
