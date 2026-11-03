@@ -26,4 +26,10 @@ assert.match(code, /draftPicker\('icon', [^\n]*'icon'/, 'popup uses icon picker 
 assert.match(code, /if \(energyId && !this\._matchingEntities\('energy'\)/, 'invalid energy sensor is rejected on save');
 assert.match(code, /onChoose: chosen => \{ current = chosen; \}/, 'popup picker updates draft, not live config');
 assert.doesNotMatch(code.slice(code.indexOf('  _consumerList(section) {'),code.indexOf('  _backupSection() {')), /document\.createElement\('datalist'\)/, 'no browser datalist in popup');
+const consumerDialog = code.slice(code.indexOf('  _consumerList(section) {'),code.indexOf('  _backupSection() {'));
+assert.doesNotMatch(consumerDialog, /entity\.input\.focus\(\)/, 'do not auto-open the power suggestions');
+assert.match(consumerDialog, /title\.tabIndex = -1/, 'focusable heading is provided');
+assert.match(consumerDialog, /title\.focus\(\{ preventScroll: true \}\)/, 'focus the dialog heading instead of the search picker');
+assert.match(code, /input\.addEventListener\('focus', \(\) => \{ this\._closePickers\(obj\); update\(\); \}\)/,
+  'suggestions still open when the picker receives user focus');
 console.log('Consumer management popup and exclusion checks passed');
