@@ -514,7 +514,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       }
       // Ohne PV-Linie niemals einen berechneten PV-Prozentwert anzeigen.
       if (n.w <= mf) return '';
-      if (n.activeBadge && !/\\d+(?:[.,]\\d+)?\\s*%\\s*PV/i.test(n.activeBadge)) return n.activeBadge;
+      if (n.activeBadge && !/[0-9]+(?:[.,][0-9]+)?\s*%\s*PV/i.test(n.activeBadge)) return n.activeBadge;
       if (gridLineTargets.has(n.key)) return 'NETZ';
       if (batteryLineTargets.has(n.key)) return 'AKKU';
       return '';
