@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.7';
+const SFC_VERSION = '0.6.8';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -1474,7 +1474,10 @@ class SmartifyFlowCardEditor extends HTMLElement {
       dialog.append(buttons);
       overlay.append(dialog);
       this.shadowRoot.append(overlay);
-      entity.input.focus();
+      // Focus the dialog heading instead of the power picker: the picker opens
+      // suggestions on focus and must stay closed until the user selects it.
+      title.tabIndex = -1;
+      title.focus({ preventScroll: true });
     };
     this._instanceId ||= String(Math.floor(Math.random() * 1e9));
     add.addEventListener('click', () => open());
