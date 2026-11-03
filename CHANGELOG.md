@@ -1,3 +1,12 @@
+## v0.6.0 – Prozentwerte in segmentiertem Farbstreifen (2026-11-03)
+
+- Die bisherige 4-px-PV-Akzentlinie der Verbraucherkacheln wird durch einen **22 px hohen segmentierten Fußstreifen** ersetzt: PV, Akku, Netz, gegebenenfalls offener Rest.
+- Segmentbreiten folgen exakt den bereits berechneten individuellen Watt-Zuteilungen. Beschriftungen (ganzzahlig gerundet) liegen direkt in den Segmenten; bei Platzmangel verschwindet nur die Beschriftung, nicht das Segment.
+- Die Prozent-Badges oben rechts entfallen ausschließlich für Verbraucher; Namen, Leistungszahl und Tagesenergie bleiben in ihrer bisherigen Reihenfolge. Quellen-Kacheln behalten ihre ursprüngliche Akzentlinie und ihre Status-Badges.
+- Segment-Farben sind themetauglich; gelb für PV, grün für Akku, themebasierter Netz-Grauton, offen in neutraler Trackfarbe. Tooltip und accessible Label nennen weiterhin alle Quellenwerte.
+- Für Radiallayout ist Platz am unteren Rand reserviert; die globale prozentuelle Schriftgrößen-Einstellung gilt weiterhin.
+- Layout-Regressionstest aktualisiert. HA-Livetest auf iPhone/iPad/Desktop steht aus.
+
 ## v0.5.9 – Verbraucher sortieren und Schriftgröße prozentuell einstellen (2026-11-03)
 
 - Klassische Listenansicht sortiert nun **alle** sichtbaren Verbraucherkacheln nach aktueller Leistung (W), einschließlich **Sonstige** (zusammengefasste Verbraucher) und **Nicht erfasst** (Restlast). Größter Verbraucher steht oben, stabile Reihenfolge bei Gleichstand.
