@@ -146,8 +146,10 @@ function sfcQuarterPeak(points,from,to) {
   let result=null;const q=900000,five=300000;
   for(let t=Math.ceil(from/q)*q;t+q<=to;t+=q){
     let delta=0,valid=true;
+    // Short-term statistic sums are the cumulative energy at the END
+    // of their named five-minute bucket; 18:00-18:15 uses 17:55 and 18:10.
     for(let i=0;i<3;i++){
-      const x=points.get(t+i*five),y=points.get(t+(i+1)*five);
+      const x=points.get(t+(i-1)*five),y=points.get(t+i*five);
       if(!Number.isFinite(x)||!Number.isFinite(y)||y<x-1e-8){valid=false;break}
       delta+=Math.max(0,y-x);
     }
@@ -157,8 +159,10 @@ function sfcQuarterPeak(points,from,to) {
 }
 function sfcEnergyDelta(points,from,to) {
   // Full cumulative-energy boundaries only; do not manufacture estimates.
-  if(!points||!points.has(from)||!points.has(to))return null;
-  const x=points.get(from),y=points.get(to);
+  // Hourly recorder sum is at the END of its labelled hour.
+  const hour=3600000;
+  if(!points||!points.has(from-hour)||!points.has(to-hour))return null;
+  const x=points.get(from-hour),y=points.get(to-hour);
   return y>=x?y-x:null;
 }
 
