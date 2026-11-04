@@ -1,3 +1,12 @@
+## v0.6.15 – Jahreswerte bei fehlender Vorjahresstunde wiederherstellen (2026-11-04)
+
+- Regression aus v0.6.14 behoben: Jahres-PV und der davon abhängige Restverbrauch wurden bei fehlendem 31.12.-Stundenpunkt vollständig unterdrückt, selbst wenn ab 1.1. Statistikwerte existierten.
+- Jahres-/Monats-/Tagessummen jetzt aus **echten Recorder-`sum`-Zählerständen** an beiden Zeitgrenzen statt `statistic_during_period.change` mit möglichem implizitem Null-Anfang. Nur zwei schmale Stundenabfragen, bei noch laufenden Zeiträumen eine kurze 5-Minuten-Abfrage; keine umfangreichen Jahreszeitreihen.
+- Startgrenze: vorzugsweise exakt vorhergehender Stundenbucket, andernfalls erste Stunde **als gekennzeichneter Teilzeitraum** (kein falscher Nullbeginn). Bei wirklich fehlendem Anfangswert „–“. Endgrenze: neuester abgeschlossener Bucket; kein erfundener aktueller Wert.
+- PV, Netz-, Akku- und Einzelgerätewerte einheitlich in kWh; historische Hausbilanz und „Nicht erfasst“ bleiben von vollständigen, konsistenten Quellen abhängig.
+- Tests für gültigen Vorjahres-Anfang, fehlenden Vorjahrespunkt/ersten Jahrestag, vollständig fehlenden Anfang, Zählerrücksprung und aktuelle 5-Minuten-Endwerte.
+- Keine Konfigurationsmigration, Live-Leistung und Kalenderbuttons unverändert. Tatsächlich fehlerhafte Home-Assistant-Langzeitstatistiken müssen gesondert repariert werden.
+
 ## v0.6.14 – Korrektur überhöhter Jahreswerte (2026-11-04)
 
 - Jahres-/Monats-/Tagessummen aus der Recorder-API `statistic_during_period` werden **nur** übernommen, wenn am angeforderten Start der Zeitraumstatistik ein vollständiger stündlicher Recorder-Anfangswert vorhanden ist. Ohne Startwert kann Home Assistant implizit 0 annehmen, was insbesondere bei im Jahresverlauf angelegten PV-Zählern zu massiv überhöhten Jahres-kWh und „Nicht erfasst“-kWh führt.
