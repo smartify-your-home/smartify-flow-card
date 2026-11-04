@@ -22,6 +22,13 @@ Diese Datei ist für **jede** Weiterentwicklung verbindlich. Vor jedem Eingriff 
 6. **Jede Funktionsänderung aktualisiert:** README-Features, Konfigurationsreferenz und Beispiele soweit betroffen; CHANGELOG mit Auswirkungen, Migration/Kompatibilität, ggf. bekannte Einschränkungen; UI-Hinweise/Hilfetexte und Übersetzungen, sobald betroffen. Nicht veraltete HACS- oder In-App-Beschreibungen stehenlassen.
 7. Bei Integration-Releases sicherstellen, dass HACS das Repository als Typ **Integration** installieren kann und dass die Ressource nach einem Neustart mit Versionsquery registriert wird.
 
+## Historische Schnellzeiträume ab v0.6.13 – verbindlich
+- Oben in der Karte **Live / Datum / Tag / Monat / Jahr** als responsive Buttons. **Tag** = heute 00:00 bis jetzt, **Monat** = erster Kalendertag des laufenden Monats 00:00 bis jetzt, **Jahr** = 1. Januar des laufenden Jahres 00:00 bis jetzt. Schnellbuttons sofort anwenden; Datum-Dialog wie bisher nur nach OK anwenden. Bei Rückkehr zu Live alle Schnellbutton-Auswahlen zurücksetzen.
+- Datumseingabe: Monats- und Jahresgrenzen erlauben (keine 31-Tage-Grenze). Beliebige historische Zeiträume bis 5 Jahre. Zukunft gesperrt. Heutigen Tag zulassen, bei noch laufenden Zeiträumen nur Werte **bis jetzt**, nie bis morgen verlangen.
+- Große Zeitfenster mit dem Recorder-`statistic_during_period` und `types: ['change']` direkt aus Gesamtenergiezählern auswerten, nicht tausende Stundenstatistiken zum Browser übertragen; fehlende oder ungültige Ergebnisse als nicht verfügbar kennzeichnen, Einheiten Wh/kWh/MWh umrechnen. Cache: laufender Zeitraum 60 s, abgeschlossener 300 s, maximal 5 Einträge; veraltete asynchrone Ergebnisse nicht auf neue Auswahl überschreiben.
+- Viertelstunden-Peak darf nur aus einer **vollständigen** Abdeckung der gesamten ausgewählten Viertelstunden mit kurzlebigen 5-Minuten-Statistiken resultieren. Für lange/alte Zeiträume nicht aus einer Teilstichprobe auf Monats-/Jahresmaximum schließen.
+- Vor Release `node tests/test_historical_periods.cjs` zusammen mit allen bisherigen Checks in Validate + Release laufen lassen. Bestehende Radial-/Listen-, Akkubilanz-, Kalender-, Netz-Doppelwerte-, Dropdown- und Theme-Fixes erhalten.
+
 ## Historische Energiebilanz ab v0.6.12 – verbindlich
 - Historische Netz-Kachel zeigt Netzbezug UND Netzeinspeisung separat in kWh unter dem Hauptwert, ohne saldierte Ersetzung. Live-Netzkachel darf nicht verändert werden.
 - Im Editor Batteriespeicher optional `battery.charge_total` und `battery.discharge_total` als getypte **energy**-Picker mit denselben Scroll-/Touch-/Vorschlagsfixes wie im Haupteditor. Nur Gesamtenergiezähler verwenden, keine tägliche Tageswertsumme.
