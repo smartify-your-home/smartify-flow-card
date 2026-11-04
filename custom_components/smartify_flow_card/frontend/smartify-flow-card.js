@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.10';
+const SFC_VERSION = '0.6.11';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -122,6 +122,46 @@ function sfcLineWidth(watts, maxWatts, minWidth = 1.5, maxWidth = 4.5, scale = '
   return (min + (max - min) * factor).toFixed(2);
 }
 
+function sfcLocalDate(d) {
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+}
+function sfcDateWindow(a,b) {
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(a)||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
+  const x=new Date(a+'T00:00:00'),y=new Date(b+'T00:00:00');
+  if(!Number.isFinite(+x)||!Number.isFinite(+y)||sfcLocalDate(x)!==a||sfcLocalDate(y)!==b||y<x)return null;
+  y.setDate(y.getDate()+1);
+  return {from:+x,to:+y};
+}
+function sfcHistoryPoints(items,unit) {
+  const mult=String(unit||'kWh').toLowerCase()==='wh'?.001:String(unit||'kWh').toLowerCase()==='mwh'?1000:1;
+  const map=new Map();
+  for(const r of Array.isArray(items)?items:[]) {
+    const t=Date.parse(r.start),v=Number(r.sum);
+    if(Number.isFinite(t)&&r.sum!=null&&Number.isFinite(v))map.set(t,v*mult);
+  }
+  return map;
+}
+function sfcQuarterPeak(points,from,to) {
+  if(!points||!points.size)return null;
+  let result=null;const q=900000,five=300000;
+  for(let t=Math.ceil(from/q)*q;t+q<=to;t+=q){
+    let delta=0,valid=true;
+    for(let i=0;i<3;i++){
+      const x=points.get(t+i*five),y=points.get(t+(i+1)*five);
+      if(!Number.isFinite(x)||!Number.isFinite(y)||y<x-1e-8){valid=false;break}
+      delta+=Math.max(0,y-x);
+    }
+    if(valid&&(!result||delta*4>result.kw))result={kw:delta*4,from:t,to:t+q};
+  }
+  return result;
+}
+function sfcEnergyDelta(points,from,to) {
+  // Full cumulative-energy boundaries only; do not manufacture estimates.
+  if(!points||!points.has(from)||!points.has(to))return null;
+  const x=points.get(from),y=points.get(to);
+  return y>=x?y-x:null;
+}
+
 class SmartifyFlowCard extends HTMLElement {
   static getConfigElement() { return document.createElement('smartify-flow-card-editor'); }
 
@@ -148,6 +188,9 @@ class SmartifyFlowCard extends HTMLElement {
     this._shown = new Set();
     this._radialOrder = [];
     this._paths = new Map();
+    this._historyMode=this._historyMode||'live';
+    this._historyCache=this._historyCache||new Map();
+    this._historySeq=this._historySeq||0;
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
     this._build();
   }
@@ -155,7 +198,7 @@ class SmartifyFlowCard extends HTMLElement {
   set hass(h) {
     this._h = h;
     if (!this._raf) this._raf = requestAnimationFrame(() => { this._raf = null; this._update(); });
-    this._maybeEnergy();
+    if(this._historyMode==='live')this._maybeEnergy();
   }
 
   getCardSize() { return 8; }
@@ -297,6 +340,149 @@ class SmartifyFlowCard extends HTMLElement {
     return legacyDayId ? this._kwh(legacyDayId) : null;
   }
 
+
+  _historyIds(){
+    const c=this._c;
+    const ids=new Set([c.solar.energy_total,c.grid.import_total,c.grid.export_total]);
+    for(const id of this._consumerEntities())ids.add(this._energyId(id));
+    return [...ids].filter(Boolean);
+  }
+  _historyStatus(){
+    const el=this.shadowRoot.querySelector('.history-status');
+    if(!el)return;
+    let label='';
+    if(this._historyMode==='history'){
+      label=this._historyLoading?'Lade historische Energiedaten …':this._historyError||
+        (this._historyRange?this._historyRange.start+' – '+this._historyRange.end:'');
+    }
+    el.textContent=label;
+    this.shadowRoot.querySelector('.history-live').classList.toggle('selected',this._historyMode==='live');
+    this.shadowRoot.querySelector('.history-date').classList.toggle('selected',this._historyMode==='history');
+  }
+  async _getStatistics(ids,from,to,period){
+    if(!ids.length)return {};
+    return this._h.callWS({type:'recorder/statistics_during_period',statistic_ids:ids,
+      start_time:new Date(from).toISOString(),end_time:new Date(to).toISOString(),
+      period:period,types:['sum']});
+  }
+  async _loadHistory(start,end){
+    const window=sfcDateWindow(start,end);
+    if(!window||window.to-window.from>32*86400000||window.from>Date.now()){
+      this._historyError='Ungültiges Datum oder Zeitraum über 31 Tage.';this._historyStatus();return;
+    }
+    const seq=++this._historySeq, ids=this._historyIds(), key=[start,end,...ids].join('|');
+    this._historyMode='history';this._historyRange={start,end};this._historyLoading=true;
+    this._historyError='';this._historyStatus();
+    if(this._historyCache.has(key)){
+      const cache=this._historyCache.get(key);
+      if(cache.until>Date.now()){this._historyData=cache.data;this._historyLoading=false;this._historyStatus();this._update();return;}
+    }
+    try{
+      // Short-term 5-minute statistics are retained for a limited period.
+      // Hourly statistics remain usable for older days, without a peak claim.
+      const primary=await this._getStatistics(ids,window.from-3600000,window.to,'hour');
+      const peakId=this._c.grid.import_total;
+      let fine={};
+      if(peakId&&window.to>Date.now()-11*86400000){
+        const shortFrom=Math.max(window.from-300000,Date.now()-11*86400000);
+        try{fine=await this._getStatistics([peakId],shortFrom,Math.min(window.to,Date.now()),'5minute');}
+        catch(_){fine={};}
+      }
+      if(seq!==this._historySeq||this._historyMode!=='history')return;
+      const energy={},points={};
+      for(const id of ids){
+        const unit=this._st(id)?.attributes?.unit_of_measurement||'kWh';
+        points[id]=sfcHistoryPoints(primary[id],unit);
+        energy[id]=sfcEnergyDelta(points[id],window.from,window.to);
+      }
+      const finePoints=peakId?sfcHistoryPoints(fine[peakId],this._st(peakId)?.attributes?.unit_of_measurement):null;
+      const peak=sfcQuarterPeak(finePoints,window.from,Math.min(window.to,Math.floor(Date.now()/900000)*900000));
+      this._historyData={energy,peak};
+      this._historyCache.set(key,{until:Date.now()+300000,data:this._historyData});
+      while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
+    }catch(err){
+      if(seq!==this._historySeq)return;
+      this._historyData=null;this._historyError='Recorder-Statistiken nicht verfügbar';
+    }finally{
+      if(seq===this._historySeq){this._historyLoading=false;this._historyStatus();this._update();}
+    }
+  }
+  _historicalModel(){
+    if(!this._historyData)return null;
+    const c=this._c,energy=this._historyData.energy;
+    const get=id=>id&&Number.isFinite(energy[id])?energy[id]:null;
+    const pv=get(c.solar.energy_total),imp=get(c.grid.import_total),exp=get(c.grid.export_total);
+    const pvUsed=pv!=null&&exp!=null?Math.max(0,pv-exp):null;
+    const total=pvUsed!=null&&imp!=null?pvUsed+imp:null;
+    const valid=[],missing=[];
+    for(const id of this._consumerEntities()){
+      const kwh=get(this._energyId(id)),name=this._name(id);
+      if(kwh==null)missing.push(id);
+      else valid.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000});
+    }
+    const measured=valid.reduce((a,n)=>a+n.energy,0);
+    const rest=total!=null&&missing.length===0?Math.max(0,total-measured):null;
+    if(c.show_rest&&rest!=null)valid.push({key:'_rest',kind:'load',name:c.rest_name,icon:'mdi:home-outline',color:SFC_COL.rest,w:rest*1000,energy:rest});
+    if(missing.length)valid.push({key:'_other',kind:'load',name:'Ohne Energiedaten ('+missing.length+')',icon:'mdi:help-circle-outline',color:SFC_COL.other,w:0,energy:null});
+    const allocation=c.allocation==='proportional'?sfcAllocateProportional:sfcAllocateSources;
+    const assigned=allocation(valid.map(x=>({key:x.key,w:x.w})),{pv:(pvUsed||0)*1000,battery:0,grid:(imp||0)*1000});
+    for(const n of valid){
+      const a=assigned.get(n.key)||{};
+      n.pvW=a.pv||0;n.gridW=a.grid||0;n.batteryW=0;n.unassignedW=a.unassigned||0;
+    }
+    const right=sfcSortLoadTiles(valid,c.rest_always_last&&c.layout!=='radial');
+    const sources=[
+      {key:'_solar',kind:'solar',name:c.solar.name||'PV',icon:c.solar.icon||'mdi:solar-power',color:SFC_COL.solar,energy:pv,w:(pv||0)*1000,entity:c.solar.energy_total},
+      {key:'_grid',kind:'grid',name:'Netz',icon:c.grid.icon||'mdi:transmission-tower',color:SFC_COL.grid,energy:imp,w:(imp||0)*1000,entity:c.grid.import_total}
+    ];
+    if(c.battery?.power)sources.push({key:'_battery',kind:'battery',name:c.battery.name||'Akku',icon:c.battery.icon||'mdi:home-battery',color:SFC_COL.battery,energy:null,w:0,entity:c.battery.power});
+    const left=sfcSourceOrder(c.source_order,sources.map(n=>n.key)).map(k=>sources.find(n=>n.key===k));
+    const flows=[];
+    for(const n of right){
+      if(n.pvW>0)flows.push({from:'_solar',to:n.key,w:n.pvW});
+      if(n.gridW>0)flows.push({from:'_grid',to:n.key,w:n.gridW});
+    }
+    return {historical:true,left,right,flows,pvT:pv,impT:imp,expT:exp,
+      peak:this._historyData.peak,missingCount:missing.length,limitPct:null,fc:null,fcRem:null};
+  }
+  _openHistoryDialog(){
+    if(this.shadowRoot.querySelector('.history-overlay'))return;
+    const overlay=document.createElement('div');
+    overlay.className='history-overlay';
+    overlay.innerHTML='<div class="history-dialog" role="dialog" aria-modal="true" aria-label="Datum auswählen">'+
+      '<h3 tabindex="-1">Datum auswählen</h3><label>Auswahl<select class="history-type"><option value="day">Einzelner Tag</option><option value="range">Zeitraum</option></select></label>'+
+      '<div class="history-inputs"><label>Von<input class="history-from" type="date"></label>'+
+      '<label class="history-end-field" hidden>Bis<input class="history-to" type="date"></label></div>'+
+      '<p>Historische Energiedaten: maximal 31 Tage. Feste Viertelstunden nur bei verfügbaren 5-Minuten-Statistiken.</p>'+
+      '<div class="history-buttons"><button class="history-cancel" type="button">Abbrechen</button><button class="history-ok" type="button">OK</button></div>'+
+      '<div class="history-error" role="status"></div></div>';
+    const today=sfcLocalDate(new Date()),y=new Date();y.setDate(y.getDate()-1);
+    const type=overlay.querySelector('.history-type'),from=overlay.querySelector('.history-from'),to=overlay.querySelector('.history-to');
+    from.max=to.max=today;from.value=this._historyRange?.start||sfcLocalDate(y);to.value=this._historyRange?.end||from.value;
+    type.value=this._historyRange?.start!==this._historyRange?.end?'range':'day';
+    const sync=()=>overlay.querySelector('.history-end-field').hidden=type.value!=='range';
+    type.addEventListener('change',sync);sync();
+    overlay.querySelector('.history-cancel').addEventListener('click',()=>overlay.remove());
+    overlay.querySelector('.history-ok').addEventListener('click',()=>{
+      const end=type.value==='day'?from.value:to.value,win=sfcDateWindow(from.value,end);
+      if(!win||win.from>Date.now()||win.to-win.from>32*86400000){
+        overlay.querySelector('.history-error').textContent='Bitte einen gültigen Zeitraum bis 31 Tage auswählen.';return;
+      }
+      overlay.remove();this._loadHistory(from.value,end);
+    });
+    this.shadowRoot.appendChild(overlay);
+    overlay.querySelector('h3').focus({preventScroll:true});
+  }
+  _initHistoryControls(){
+    this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>{
+      ++this._historySeq;this._historyMode='live';this._historyLoading=false;this._historyError='';
+      this.shadowRoot.querySelector('.history-overlay')?.remove();
+      this._historyStatus();this._update();this._maybeEnergy();
+    });
+    this.shadowRoot.querySelector('.history-date').addEventListener('click',()=>this._openHistoryDialog());
+    this._historyStatus();
+  }
+
   /* ---------- model ---------- */
   _compute() {
     const c = this._c, s = c.solar, g = c.grid, b = c.battery;
@@ -431,6 +617,25 @@ class SmartifyFlowCard extends HTMLElement {
 ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padding:16px;overflow:hidden;font-size:${scale}em;background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) ${100 - transparency}%, transparent);}
 .title{font-weight:800;font-size:1.05em;margin:0 0 12px 2px;color:var(--sf-txt);text-transform:uppercase;letter-spacing:.06em}
 .wrap{max-width:${maxW}px;margin:0 auto}
+
+.history-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.history-toolbar button{font:inherit;min-height:36px;padding:7px 13px;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
+.history-toolbar button.selected{border-color:var(--primary-color);color:var(--primary-color);font-weight:700}
+.history-status{font-size:.75em;color:var(--sf-sub);overflow-wrap:anywhere}
+.history-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:12px;background:#0009}
+.history-dialog{box-sizing:border-box;width:min(100%,420px);max-height:90dvh;overflow:auto;padding:18px;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color);opacity:1;border:1px solid var(--divider-color);border-radius:var(--sf-r);box-shadow:0 10px 30px #0005}
+.history-dialog h3{margin:0 0 14px}.history-dialog label{display:grid;gap:4px;font-size:.85em}
+.history-dialog input,.history-dialog select{width:100%;min-width:0;min-height:44px;box-sizing:border-box;padding:9px;color:var(--primary-text-color);background:var(--secondary-background-color);border:1px solid var(--divider-color);border-radius:var(--sf-r);font:inherit}
+.history-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:12px;margin:12px 0}
+.history-dialog p,.history-error{font-size:.75em;color:var(--secondary-text-color)}
+.history-buttons{display:flex;gap:8px;justify-content:flex-end}
+.history-buttons button{padding:9px 14px;min-height:40px;font:inherit;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
+.history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff)}
+.quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:12px;border-top:1px solid var(--divider-color)}
+.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1;min-width:0}.quarter-name{font-weight:700;font-size:.8em}
+.quarter-time{font-size:.7em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.1em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(max-width:360px){.quarter-row{flex-wrap:wrap}.quarter-value{margin-left:auto}}
+
 .flow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(64px,.75fr) minmax(0,1fr);grid-template-rows:auto}
 .col{display:flex;flex-direction:column;justify-content:space-around;gap:var(--sf-gap);position:relative;z-index:1;grid-row:1;min-width:0}
 .col.left{grid-column:1}
@@ -519,6 +724,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 <ha-card>
   <div class="wrap">
   <div class="title" hidden></div>
+  <div class="history-toolbar"><button class="history-live selected" type="button">Live</button><button class="history-date" type="button">Datum</button><span class="history-status"></span></div>
   <div class="flow${this._c.layout === 'radial' ? ' radial' : ''}"><svg class="lines"><g class="pg"></g></svg><div class="col left"></div><div class="col right"></div></div>
   <div class="stats" hidden>
     <div class="ring"><svg viewBox="0 0 132 132">
@@ -531,6 +737,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       <div class="row" style="--c:${SFC_COL.grid}"><div class="rt">Netzbezug</div><div class="rp r2p">–</div><div class="rs r2s"></div><div class="bar"><i class="r2b"></i></div></div>
       <div class="row" style="--c:${SFC_COL.export}"><div class="rt">Einspeisung</div><div class="rp r3p">–</div><div class="rs r3s"></div><div class="bar"><i class="r3b"></i></div></div>
     </div>
+    <div class="quarter-row"><ha-icon icon="mdi:gauge"></ha-icon><div class="quarter-desc"><div class="quarter-name">Max. 15-Min.-Netzbezug</div><div class="quarter-time">Im Datumsmodus verfügbar</div></div><div class="quarter-value">–</div></div>
   </div>
   </div>
 </ha-card>`;
@@ -543,6 +750,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     const t = r.querySelector('.title'); if (this._c.title) { t.hidden = false; t.textContent = this._c.title; }
     r.querySelector('.stats').hidden = !this._c.show_stats;
     this._paths = new Map(); this._sig = null;
+    this._initHistoryControls();
     if (this._ro) this._ro.observe(this._flowEl);
   }
 
@@ -689,10 +897,12 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 
   _update() {
     if (!this._h || !this._c || !this._flowEl) return;
-    const m = this._compute(); this._m = m;
+    const m=this._historyMode==='history'?this._historicalModel():this._compute();
+    if(!m)return;
+    this._m=m;
     this._syncNodes(this._leftEl, m.left);
     this._syncNodes(this._rightEl, m.right);
-    const mf = Number(this._c.idle_power ?? this._c.min_flow ?? 5);
+    const mf=m.historical?-1:Number(this._c.idle_power ?? this._c.min_flow ?? 5);
     const isSourceConsumer = n => n.kind === 'consumer' || n.key === '_rest' || n.key === '_other';
     const set = (n, val, sub, sub2, badge, bar, warn) => {
       const el = this.shadowRoot.querySelector(`.node[data-key="${CSS.escape(n.key)}"]`); if (!el) return;
@@ -738,7 +948,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       if (bdEl.textContent !== bdText) bdEl.textContent = bdText;
       const b = el.querySelector('.bar'); b.classList.toggle('hide', bar == null);
       if (bar != null) b.firstElementChild.style.width = Math.max(0, Math.min(100, bar)) + '%';
-      el.classList.toggle('idle', n.w <= mf);
+      el.classList.toggle('idle', !m.historical && n.w <= mf);
       const isLoad = isSourceConsumer(n) && useStrip;
       el.classList.toggle('has-source-strip', isLoad);
       const strip = el.querySelector('.source-strip');
@@ -756,6 +966,8 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       el.classList.toggle('warn', !!warn);
     };
     for (const n of m.left) {
+      if(m.historical){set(n,n.energy==null?'–':this._fmtKwh(n.energy)+' kWh',
+        n.kind==='battery'?'Akku-Energie nicht konfiguriert':'Ausgewählter Zeitraum','','',null);continue;}
       if (n.kind === 'solar') {
         set(n, this._fmtW(n.w),
           m.pvT != null ? `${this._fmtKwh(m.pvT)} kWh heute` : '',
@@ -774,7 +986,9 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       }
     }
     for (const n of m.right) {
-      set(n, this._fmtW(n.w), n.energy != null ? `${this._fmtKwh(n.energy)} kWh heute` : '', '', '', null);
+      if(m.historical)set(n,n.energy==null?'–':this._fmtKwh(n.energy)+' kWh',
+        n.energy==null?'Keine Energiedaten':'Modellierte Quellenanteile','','',null);
+      else set(n,this._fmtW(n.w),n.energy!=null?this._fmtKwh(n.energy)+' kWh heute':'','','',null);
     }
     this._updateStats(m);
     this._scheduleDraw();
@@ -826,8 +1040,14 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       hasImp ? `${imp.toFixed(2)} kWh · aus dem Netz` : 'Netzbezugszähler erforderlich',
       hasStorage ? 'ANTEIL CA.' : 'DES VERBRAUCHS');
     row(3, exportPct,
-      hasExp ? `${exp.toFixed(2)} kWh · eingespeist` : 'Einspeisezähler erforderlich',
+      hasExp ? exp.toFixed(2)+' kWh · eingespeist' : 'Einspeisezähler erforderlich',
       'DES PV-ERTRAGS');
+    const peak=m.historical?m.peak:null;
+    const pvEl=r.querySelector('.quarter-value'),pt=r.querySelector('.quarter-time');
+    pvEl.textContent=peak?peak.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
+    const fmt=t=>new Date(t).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    pt.textContent=peak?fmt(peak.from)+' – '+new Date(peak.to).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):
+      (m.historical?'Keine vollständigen Viertelstundenwerte verfügbar':'Im historischen Datumsmodus verfügbar');
   }
 
   _layoutRadial() {
