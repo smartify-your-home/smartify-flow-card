@@ -21,11 +21,12 @@ assert.equal(helpers.validate('2010-01-01','2026-11-04',now),null,'bounded long-
 for(const selector of ['history-live','history-date','history-day','history-month','history-year'])
   assert.match(src,new RegExp('class="'+selector+'(?: selected)?"'),'toolbar '+selector);
 assert.match(src,/this\._loadHistory\(period\.start,period\.end,mode\)/,'quick shortcuts load immediately');
-assert.match(src,/type:'recorder\/statistic_during_period'/,'efficient direct period delta rather than hourly rows');
-assert.match(src,/const baseline=await this\._getStatistics\(ids,range\.from-3600000,range\.from,'hour'\)/,'starts must be verified');
-assert.match(src,/units:\{energy:'kWh'\}/,'stable recorder unit independent of the current sensor unit');
-assert.match(src,/sfcCheckedHistoricalChange\(result\?\.change,points,range\.from\)/,'unverified annual totals suppressed');
-assert.match(src,/fixed_period:\{start_time:new Date\(range\.from\)\.toISOString\(\),end_time:new Date\(range\.to\)\.toISOString\(\)\}/);
+assert.match(src,/this\._getStatistics\(ids,range\.from-3600000,range\.from\+3600000,'hour',\{energy:'kWh'\}\)/,'read beginning including first hour');
+assert.match(src,/this\._getStatistics\(ids,range\.to-7200000,range\.to,'hour',\{energy:'kWh'\}\)/,'read recorded end boundary');
+assert.match(src,/this\._getStatistics\(ids,range\.to-3600000,range\.to,'5minute',\{energy:'kWh'\}\)/,'live periods use fine end stats');
+assert.match(src,/sfcVerifiedBoundaryEnergy\(first,last,fine,range\.from,range\.to\)/,'annual totals come from actual sums');
+assert.doesNotMatch(src,/type:'recorder\/statistic_during_period'/,'implicit-zero change endpoint no longer used');
+assert.match(src,/partialIds\.push\(id\)/,'show partial baseline information');
 assert.match(src,/overlay\.querySelector\('\.history-cancel'\)\.addEventListener\('click',\(\)=>overlay\.remove\(\)\)/,'dialog cancel');
 assert.match(src,/overlay\.remove\(\);this\._loadHistory\(from\.value,end\)/,'dialog loads after OK');
 assert.match(src,/const validPeakRange=/,'quarter peak remains separate and bounded');
