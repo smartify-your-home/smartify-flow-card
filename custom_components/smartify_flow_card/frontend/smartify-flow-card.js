@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.9';
+const SFC_VERSION = '0.6.10';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -44,10 +44,13 @@ function sfcMoveSource(order, key, target) {
   return next;
 }
 
-function sfcSortLoadTiles(tiles) {
-  return [...tiles].sort((a, b) =>
-    (b.w - a.w) || String(a.key).localeCompare(String(b.key))
-  );
+function sfcSortLoadTiles(tiles, pinRestBottom = false) {
+  return [...tiles].sort((a, b) => {
+    if (pinRestBottom && (a.key === '_rest' || b.key === '_rest') && a.key !== b.key) {
+      return a.key === '_rest' ? 1 : -1;
+    }
+    return (b.w - a.w) || String(a.key).localeCompare(String(b.key));
+  });
 }
 
 function sfcAllocateSources(candidates, supply) {
@@ -130,7 +133,7 @@ class SmartifyFlowCard extends HTMLElement {
     if (!config.solar || !config.grid) throw new Error('smartify-flow-card: "solar" und "grid" sind erforderlich');
     this._c = Object.assign({
       label: 'verbraucher', layout: 'classic', min_power: 10, hide_below_display_power: false, max_consumers: 8, min_flow: 5, idle_power: 5,
-      show_stats: true, show_rest: true, rest_name: 'Nicht erfasst',
+      show_stats: true, show_rest: true, rest_name: 'Nicht erfasst', rest_always_last: false,
       max_expected_power_kw: 10, speed_multiplier: 1, font_scale: 1, background_transparency: 0,
       source_display: 'badge', allocation: 'smallest_first', line_width_min: 1.5, line_width_max: 4.5, line_scale: 'sqrt',
       contract_power_limit_kw: null, contract_warning_pct: 0.85,
@@ -379,20 +382,11 @@ class SmartifyFlowCard extends HTMLElement {
       n.unassignedPct = n.w > 0 ? 100 * n.unassignedW / n.w : 0;
     }
 
-    // Sonstige and Nicht erfasst compete equally with named consumers.
-    // Preserve radial layout's ring ordering; only classic list is re-sorted.
-    if (c.layout !== 'radial') {
-      right.splice(0, right.length, ...sfcSortLoadTiles(right));
-    } else {
-      // Fix tile positions across power fluctuations. Otherwise small watt
-      // changes reorder the radial ring and make the whole card jump.
-      const previous = this._radialOrder || [];
-      const keys = new Set(right.map(n => n.key));
-      const stable = [...previous.filter(key => keys.has(key)), ...right.map(n => n.key).filter(key => !previous.includes(key))];
-      const positions = new Map(stable.map((key, i) => [key, i]));
-      right.sort((a, b) => positions.get(a.key) - positions.get(b.key));
-      this._radialOrder = stable;
-    }
+    // Order every consumer (including _other and _rest) by current watts,
+    // in classic and radial alike. Only the optional list setting pins rest
+    // at the bottom; the radial ring always uses the real watt ranking.
+    const listLayout = c.layout !== 'radial' || (this._flowEl?.clientWidth || 0) < 560;
+    right.splice(0, right.length, ...sfcSortLoadTiles(right, listLayout && c.rest_always_last === true));
 
     const flows = [];
     for (const n of right) {
@@ -840,7 +834,18 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     if (this._c.layout !== 'radial' || !this._flowEl || !this._m) return;
     const flow = this._flowEl, width = flow.clientWidth;
     const narrow = width < 560;
-    if (flow.classList.contains('radial-narrow') !== narrow) flow.classList.toggle('radial-narrow', narrow);
+    if (flow.classList.contains('radial-narrow') !== narrow) {
+      flow.classList.toggle('radial-narrow', narrow);
+      // If the layout crosses the narrow threshold, re-evaluate the optional
+      // rest-last setting once, not during every resize or power update.
+      if (this._c.rest_always_last && !this._responsiveSortPending) {
+        this._responsiveSortPending = true;
+        requestAnimationFrame(() => {
+          this._responsiveSortPending = false;
+          if (this.isConnected) this._update();
+        });
+      }
+    }
     const nodes = [...flow.querySelectorAll('.node')];
     if (narrow) {
       if (flow.style.height) flow.style.height = '';
@@ -1850,6 +1855,7 @@ class SmartifyFlowCardEditor extends HTMLElement {
       ['Warnschwelle (0 bis 1)','contract_warning_pct']]) this._input(sec,title,[key],'number');
     this._toggle(sec,'Statistiken anzeigen',['show_stats'],true);
     this._toggle(sec,'Nicht erfassten Verbrauch anzeigen',['show_rest'],true);
+    this._toggle(sec,'Nicht erfasst in Listenansicht immer unten',['rest_always_last'],false);
     this._input(sec,'Name für nicht erfassten Verbrauch',['rest_name']);
     this._backupSection();
   }
