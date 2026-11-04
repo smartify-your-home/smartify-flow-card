@@ -394,7 +394,8 @@ class SmartifyFlowCard extends HTMLElement {
     }
     const seq=++this._historySeq, ids=this._historyIds(), key=[start,end,...ids].join('|');
     this._historyMode='history';this._historyRange={start,end};this._historyLoading=true;
-    this._historyError='';this._historyStatus();
+    this._historyData=null;
+    this._historyError='';this._historyStatus();this._update();
     if(this._historyCache.has(key)){
       const cache=this._historyCache.get(key);
       if(cache.until>Date.now()){this._historyData=cache.data;this._historyLoading=false;this._historyStatus();this._update();return;}
