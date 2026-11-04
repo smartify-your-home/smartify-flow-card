@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.15';
+const SFC_VERSION = '0.6.16';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -200,6 +200,16 @@ function sfcVerifiedBoundaryEnergy(startHourly,endHourly,endFine,from,to) {
   if(lastValue==null||lastTime<=measuredFrom||lastValue<initial-0.001)return null;
   return {kwh:Math.max(0,lastValue-initial),partialStart:!exactStart,through:lastTime};
 }
+function sfcPvPlants(solar) {
+  if(Array.isArray(solar?.plants))return solar.plants.filter(p=>p&&(p.power||p.energy_total));
+  return solar?.power||solar?.energy_total?[{name:solar.name||'PV-Anlage 1',power:solar.power||'',energy_total:solar.energy_total||''}]:[];
+}
+function sfcPvEnergy(plants,get) {
+  const ids=[...new Set(plants.map(p=>p.energy_total).filter(Boolean))];
+  if(!ids.length)return null;
+  const values=ids.map(get);
+  return values.some(v=>v==null||!Number.isFinite(v))?null:values.reduce((a,b)=>a+b,0);
+}
 function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recorded, hasBattery = false) {
   const required = [pv, imported, exported, recorded];
   if (hasBattery) required.push(discharged, charged);
@@ -272,6 +282,7 @@ class SmartifyFlowCard extends HTMLElement {
 
   /* ---------- helpers ---------- */
   _st(id) { return id && this._h ? this._h.states[id] : undefined; }
+  _pvPlants(){return sfcPvPlants(this._c.solar);}
   _num(id) {
     const s = this._st(id); if (!s) return 0;
     const v = parseFloat(s.state); if (isNaN(v)) return 0;
@@ -371,7 +382,7 @@ class SmartifyFlowCard extends HTMLElement {
         if (x) ids.add(x);
       }
       const c = this._c;
-      for (const id of [c.solar.energy_total, c.grid.import_total, c.grid.export_total]) {
+      for (const id of [...this._pvPlants().map(p=>p.energy_total), c.grid.import_total, c.grid.export_total]) {
         if (id) ids.add(id);
       }
       await Promise.all([...ids].map(async (id) => {
@@ -394,6 +405,11 @@ class SmartifyFlowCard extends HTMLElement {
     } finally { this._loadingE = false; this._update(); }
   }
 
+  _pvToday() {
+    const plants=this._pvPlants();
+    if(!plants.length)return this._today(null,this._c.solar.energy_today);
+    return sfcPvEnergy(plants,id=>this._today(id,null));
+  }
   _today(totalId, legacyDayId) {
     if (totalId) return this._energy[totalId] ?? null;
     // Abwärtskompatibilität mit bereits konfigurierten Tagessensoren.
@@ -417,7 +433,7 @@ class SmartifyFlowCard extends HTMLElement {
 
   _historyIds(){
     const c=this._c;
-    const ids=new Set([c.solar.energy_total,c.grid.import_total,c.grid.export_total,c.battery?.charge_total,c.battery?.discharge_total]);
+    const ids=new Set([...this._pvPlants().map(p=>p.energy_total),c.grid.import_total,c.grid.export_total,c.battery?.charge_total,c.battery?.discharge_total]);
     for(const id of this._consumerEntities())ids.add(this._energyId(id));
     return [...ids].filter(Boolean);
   }
@@ -471,12 +487,27 @@ class SmartifyFlowCard extends HTMLElement {
           :Promise.resolve({})
       ]);
       const energy={},partialIds=[],lastTimes=[];
+      const pvIds=new Set(this._pvPlants().map(p=>p.energy_total).filter(Boolean));
       for(const id of ids){
         // Requested units are already kWh; don't scale them a second time.
         const first=sfcHistoryPoints(head[id],'kWh');
         const last=sfcHistoryPoints(tail[id],'kWh');
         const fine=sfcHistoryPoints(fineTail[id],'kWh');
-        const value=sfcVerifiedBoundaryEnergy(first,last,fine,range.from,range.to);
+        let value=sfcVerifiedBoundaryEnergy(first,last,fine,range.from,range.to);
+        // Only for a genuinely newly installed plant, find the earliest
+        // recorded day. Its first hourly sum is a partial baseline.
+        if(!value&&pvIds.has(id)&&!first.size){
+          const daily=await this._getStatistics([id],range.from,range.to,'day',{energy:'kWh'});
+          const days=sfcHistoryPoints(daily[id],'kWh');
+          const firstDay=[...days.keys()].filter(t=>t>=range.from&&t<range.to).sort((a,b)=>a-b)[0];
+          if(firstDay!=null){
+            const opening=await this._getStatistics([id],firstDay,firstDay+86400000,'hour',{energy:'kWh'});
+            const openingPts=sfcHistoryPoints(opening[id],'kWh');
+            const firstHour=[...openingPts.keys()].filter(t=>t>=range.from&&t<range.to).sort((a,b)=>a-b)[0];
+            if(firstHour!=null)value=sfcVerifiedBoundaryEnergy(openingPts,last,fine,firstHour,range.to);
+            if(value)value.partialStart=true;
+          }
+        }
         energy[id]=value?.kwh??null;
         if(value?.partialStart)partialIds.push(id);
         if(value?.through)lastTimes.push(value.through);
@@ -514,7 +545,7 @@ class SmartifyFlowCard extends HTMLElement {
     if(!this._historyData)return null;
     const c=this._c,energy=this._historyData.energy;
     const get=id=>id&&Number.isFinite(energy[id])?energy[id]:null;
-    const pv=get(c.solar.energy_total),imp=get(c.grid.import_total),exp=get(c.grid.export_total);
+    const pv=sfcPvEnergy(this._pvPlants(),get),imp=get(c.grid.import_total),exp=get(c.grid.export_total);
     const hasBattery=!!(c.battery?.power);
     const charge=hasBattery?get(c.battery.charge_total):0;
     const discharge=hasBattery?get(c.battery.discharge_total):0;
@@ -559,7 +590,7 @@ class SmartifyFlowCard extends HTMLElement {
     }
     const right=sfcSortLoadTiles(visible,c.rest_always_last&&c.layout!=='radial');
     const sources=[
-      {key:'_solar',kind:'solar',name:c.solar.name||'PV',icon:c.solar.icon||'mdi:solar-power',color:SFC_COL.solar,energy:pv,w:(pv||0)*1000,entity:c.solar.energy_total},
+      {key:'_solar',kind:'solar',name:c.solar.name||'PV',icon:c.solar.icon||'mdi:solar-power',color:SFC_COL.solar,energy:pv,w:(pv||0)*1000,entity:this._pvPlants()[0]?.energy_total},
       {key:'_grid',kind:'grid',name:'Netz',icon:c.grid.icon||'mdi:transmission-tower',color:SFC_COL.grid,energy:imp,w:(imp||0)*1000,entity:c.grid.import_total}
     ];
     if(hasBattery)sources.push({key:'_battery',kind:'battery',name:c.battery.name||'Akku',icon:c.battery.icon||'mdi:home-battery',color:SFC_COL.battery,energy:discharge,w:(discharge||0)*1000,charge,discharge,entity:c.battery.power});
@@ -622,7 +653,7 @@ class SmartifyFlowCard extends HTMLElement {
   /* ---------- model ---------- */
   _compute() {
     const c = this._c, s = c.solar, g = c.grid, b = c.battery;
-    const P = Math.max(this._num(s.power), 0);
+    const P = this._pvPlants().reduce((sum,p)=>sum+Math.max(this._num(p.power),0),0);
     // A signed grid-balance sensor replaces separate import/export power sensors.
     // Positive balance can mean either importing or exporting, as selected in the editor.
     const hasBalance = g.mode === 'saldo' || (!g.mode && !!g.saldo_power);
@@ -725,7 +756,7 @@ class SmartifyFlowCard extends HTMLElement {
 
     return {
       P, I, E, Bd, Bc, soc, total, share, left, right, flows, limitPct,
-      pvT: this._today(s.energy_total, s.energy_today), impT: this._today(g.import_total, g.import_today), expT: this._today(g.export_total, g.export_today),
+      pvT: this._pvToday(), impT: this._today(g.import_total, g.import_today), expT: this._today(g.export_total, g.export_today),
       fc: this._kwh(s.forecast_today), fcRem: this._kwh(s.forecast_remaining),
     };
   }
@@ -1961,6 +1992,34 @@ class SmartifyFlowCardEditor extends HTMLElement {
     hint.textContent = '0 % = undurchsichtig, 100 % = vollständig transparent. Gerätekacheln bleiben für gute Lesbarkeit unverändert.';
     wrap.append(label, row, hint); section.append(wrap);
   }
+  _pvPlantControls(section) {
+    this._config.solar.plants ||= sfcPvPlants(this._config.solar);
+    const plants=this._config.solar.plants;
+    const list=document.createElement('div');list.className='pv-plants';section.append(list);
+    plants.forEach((plant,index)=>{
+      const item=document.createElement('div');item.className='pv-plant';
+      const head=document.createElement('div');head.className='pv-plant-head';
+      const title=document.createElement('strong');title.textContent='PV-Anlage '+(index+1);
+      const remove=document.createElement('button');remove.type='button';remove.className='remove';remove.textContent='Entfernen';
+      remove.addEventListener('click',()=>{plants.splice(index,1);this._emit();this._render();});
+      head.append(title,remove);item.append(head);
+      this._input(item,'Name',['solar','plants',index,'name']);
+      this._picker(item,'Leistungssensor (W / kW)',['solar','plants',index,'power'],'power');
+      this._picker(item,'Gesamtenergiezähler (kWh)',['solar','plants',index,'energy_total'],'energy',
+        'Separater fortlaufender Gesamtenergiezähler dieser PV-Anlage.');
+      list.append(item);
+    });
+    const add=document.createElement('button');add.type='button';add.className='add';
+    add.textContent='+ PV-Anlage hinzufügen';
+    add.addEventListener('click',()=>{
+      plants.push({name:'PV-Anlage '+(plants.length+1),power:'',energy_total:''});
+      this._emit();this._render();
+    });
+    section.append(add);
+    const hint=document.createElement('small');hint.className='backup-note';
+    hint.textContent='Die Leistungen werden live addiert. Historische Erträge werden pro Anlage separat aus den Langzeitstatistiken ermittelt und gemeinsam in einer PV-Kachel dargestellt.';
+    section.append(hint);
+  }
   _sourceOrderControl(section) {
     const wrap = document.createElement('div'); wrap.className = 'field';
     const label = document.createElement('label');
@@ -2140,6 +2199,7 @@ class SmartifyFlowCardEditor extends HTMLElement {
       .consumer-modal-actions .consumer-modal-remove{color:var(--error-color,#e53935);margin-right:auto}
       .consumer-modal-error{display:block;color:var(--error-color,#e53935);min-height:1.2em}
       
+      .pv-plants{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}.pv-plant{padding:12px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color)}.pv-plant-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.pv-plant-head .remove{min-height:36px;padding:0 8px}
       .source-order-list{display:flex;flex-direction:column;gap:6px}
       .source-order-row{display:flex;align-items:center;gap:9px;padding:5px 8px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);min-height:42px}
       .source-order-row>span{flex:1;font-weight:600}
@@ -2160,11 +2220,10 @@ class SmartifyFlowCardEditor extends HTMLElement {
     </style><div class="intro"><b>Smartify Flow Card · Visueller Editor</b><small>Entität suchen: Name oder Entity-ID eintippen, mit ↑ ↓ und Enter auswählen.</small></div><div id="body"></div>`;
     this._body = this.shadowRoot.getElementById('body');
     let sec = this._section('Photovoltaik', 'mdi:solar-power');
-    this._picker(sec,'PV-Leistung',['solar','power'],'power');
-    this._picker(sec,'PV-Gesamtenergiezähler (kWh)',['solar','energy_total'],'energy');
+    this._pvPlantControls(sec);
     this._picker(sec,'PV-Prognose heute',['solar','forecast_today'],'energy');
     this._picker(sec,'PV-Prognose verbleibend',['solar','forecast_remaining'],'energy');
-    this._input(sec,'Name',['solar','name']);
+    this._input(sec,'Name der gemeinsamen PV-Kachel',['solar','name']);
     this._picker(sec,'PV-Icon',['solar','icon'],'icon','Icon nach Namen suchen, Symbol auswählen oder mdi:Iconname eingeben.');
     sec = this._section('Stromnetz', 'mdi:transmission-tower');
     // For existing configs, default to separate sensors unless a saldo sensor exists.
