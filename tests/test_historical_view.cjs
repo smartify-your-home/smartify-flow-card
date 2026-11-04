@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const src=fs.readFileSync(path.join(__dirname,'..','custom_components','smartify_flow_card','frontend','smartify-flow-card.js'),'utf8');
 const begin=src.indexOf('function sfcLocalDate('),end=src.indexOf('class SmartifyFlowCard extends HTMLElement',begin);
 assert.ok(begin>=0&&end>begin,'history functions exist');
-const h=vm.runInNewContext(src.slice(begin,end)+'\n({date:sfcLocalDate,bounds:sfcDateWindow,points:sfcHistoryPoints,delta:sfcEnergyDelta,peak:sfcQuarterPeak})');
+const h=vm.runInNewContext(src.slice(begin,end)+'\n({date:sfcLocalDate,bounds:sfcDateWindow,points:sfcHistoryPoints,delta:sfcEnergyDelta,peak:sfcQuarterPeak,checked:sfcCheckedHistoricalChange})');
 const one=300000,start=Date.parse('2026-11-03T18:00:00.000Z');
 let samples=[];
 for(let i=-1;i<=5;i++)samples.push({start:new Date(start+i*one).toISOString(),sum:20+i*.125});
@@ -35,4 +35,9 @@ assert.match(src,/this\._historyMode==='history'\?this\._historicalModel\(\):thi
 assert.match(src,/\.quarter-row\{/);
 assert.match(src,/Max\. 15-Min\.-Netzbezug/);
 assert.match(src,/if\(this\._historyMode==='live'\)this\._maybeLivePeak\(\)/);
+const beginning=Date.parse('2026-01-01T00:00:00.000Z');
+assert.equal(h.checked(16700,new Map(),beginning),null,'annual counter change without January baseline must never appear as production');
+assert.equal(h.checked(16700,new Map([[beginning+3600000,300]]),beginning),null,'mid-year or late baseline cannot substitute January boundary');
+assert.equal(h.checked(6200,new Map([[beginning-3600000,100]]),beginning),6200,'complete annual baseline supports actual change');
+assert.equal(h.checked(null,new Map([[beginning-3600000,100]]),beginning),null,'missing recorder change is unknown');
 console.log('Historical date, fixed-quarter peak and dialog regression checks passed');

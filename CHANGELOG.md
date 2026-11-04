@@ -1,3 +1,11 @@
+## v0.6.14 – Korrektur überhöhter Jahreswerte (2026-11-04)
+
+- Jahres-/Monats-/Tagessummen aus der Recorder-API `statistic_during_period` werden **nur** übernommen, wenn am angeforderten Start der Zeitraumstatistik ein vollständiger stündlicher Recorder-Anfangswert vorhanden ist. Ohne Startwert kann Home Assistant implizit 0 annehmen, was insbesondere bei im Jahresverlauf angelegten PV-Zählern zu massiv überhöhten Jahres-kWh und „Nicht erfasst“-kWh führt.
+- Energiestatistiken werden ausdrücklich in **kWh** angefordert, sodass keine zusätzliche Wh-/MWh-Skalierung anhand eines eventuell geänderten aktuellen Einheitentextes stattfindet.
+- Bei fehlender Startstatistik oder ungültigen Ergebnissen „nicht verfügbar“ statt irreführender Null oder überhöhter Werte. Keine Veränderung der Live-Watt-Anzeige, der historischen Netzkachel oder der Akku-Bilanzformel.
+- Regressionstests ergänzen fehlende Jahres-Anfangswerte, gültige Anfänge und explizite kWh-Abfragen. Bestehende HACS-/Lovelace-Konfigurationen bleiben erhalten.
+- Hinweis: Historische Ausreißer **in den Recorder-Daten** können nicht allein durch diese Plausibilitätsprüfung korrigiert werden; gegebenenfalls Home Assistant Statistik-Reparatur prüfen.
+
 ## v0.6.13 – Tag, Monat, Jahr und monatsübergreifende historische Auswahl (2026-11-04)
 
 - Oben in der Flow Card drei kompakte Schnellbuttons **Tag (heute)**, **Monat (laufender Monat)** und **Jahr (laufendes Jahr)**; direkte Anzeige historischer kWh ab Periodenbeginn **bis jetzt**. Bestehende Buttons **Live** und **Datum** bleiben unverändert.
