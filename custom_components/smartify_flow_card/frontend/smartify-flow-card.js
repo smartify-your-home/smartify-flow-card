@@ -136,7 +136,7 @@ function sfcHistoryPoints(items,unit) {
   const mult=String(unit||'kWh').toLowerCase()==='wh'?.001:String(unit||'kWh').toLowerCase()==='mwh'?1000:1;
   const map=new Map();
   for(const r of Array.isArray(items)?items:[]) {
-    const t=Date.parse(r.start),v=Number(r.sum);
+    const t=typeof r.start==='number'?r.start:Date.parse(r.start),v=Number(r.sum);
     if(Number.isFinite(t)&&r.sum!=null&&Number.isFinite(v))map.set(t,v*mult);
   }
   return map;
@@ -144,7 +144,9 @@ function sfcHistoryPoints(items,unit) {
 function sfcQuarterPeak(points,from,to) {
   if(!points||!points.size)return null;
   let result=null;const q=900000,five=300000;
+  let expected=0,complete=0;
   for(let t=Math.ceil(from/q)*q;t+q<=to;t+=q){
+    expected++;
     let delta=0,valid=true;
     // Short-term statistic sums are the cumulative energy at the END
     // of their named five-minute bucket; 18:00-18:15 uses 17:55 and 18:10.
@@ -153,9 +155,9 @@ function sfcQuarterPeak(points,from,to) {
       if(!Number.isFinite(x)||!Number.isFinite(y)||y<x-1e-8){valid=false;break}
       delta+=Math.max(0,y-x);
     }
-    if(valid&&(!result||delta*4>result.kw))result={kw:delta*4,from:t,to:t+q};
+    if(valid){complete++;if(!result||delta*4>result.kw)result={kw:delta*4,from:t,to:t+q};}
   }
-  return result;
+  return expected>0&&complete===expected?result:null;
 }
 function sfcEnergyDelta(points,from,to) {
   // Full cumulative-energy boundaries only; do not manufacture estimates.
@@ -387,7 +389,7 @@ class SmartifyFlowCard extends HTMLElement {
   }
   async _loadHistory(start,end){
     const window=sfcDateWindow(start,end);
-    if(!window||window.to-window.from>32*86400000||window.to>new Date(sfcLocalDate(new Date())+'T00:00:00').getTime()){
+    if(!window||Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z')>=31*86400000||window.to>new Date(sfcLocalDate(new Date())+'T00:00:00').getTime()){
       this._historyError='Ungültiges Datum oder Zeitraum über 31 Tage.';this._historyStatus();return;
     }
     const seq=++this._historySeq, ids=this._historyIds(), key=[start,end,...ids].join('|');
@@ -485,7 +487,7 @@ class SmartifyFlowCard extends HTMLElement {
     overlay.querySelector('.history-cancel').addEventListener('click',()=>overlay.remove());
     overlay.querySelector('.history-ok').addEventListener('click',()=>{
       const end=type.value==='day'?from.value:to.value,win=sfcDateWindow(from.value,end);
-      if(!win||win.to>new Date(today+'T00:00:00').getTime()||win.to-win.from>32*86400000){
+      if(!win||win.to>new Date(today+'T00:00:00').getTime()||Date.parse(end+'T00:00:00Z')-Date.parse(from.value+'T00:00:00Z')>=31*86400000){
         overlay.querySelector('.history-error').textContent='Bitte einen gültigen Zeitraum bis 31 Tage auswählen.';return;
       }
       overlay.remove();this._loadHistory(from.value,end);
