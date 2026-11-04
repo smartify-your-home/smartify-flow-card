@@ -14,7 +14,7 @@ assert.doesNotMatch(update, /\.innerHTML = m\.(?:left|right)\.map/, 'never recre
 assert.match(sync, /if \(!desired\.has\(key\)\)/, 'remove only disappeared tiles');
 assert.match(sync, /if \(!el\) \{/, 'create only genuinely new tiles');
 assert.match(sync, /if \(el !== anchor\) container\.insertBefore\(el, anchor\)/, 'reorder only if changed');
-assert.match(code, /this\._radialOrder = stable/, 'stable radial order survives fluctuating power');
+assert.match(code, /right\.splice\(0, right\.length, \.\.\.sfcSortLoadTiles\(/, 'radial ring now follows current watt ranking without rebuilding DOM');
 assert.match(code, /this\._radialOrder = \[\]/, 'reset radial history on card config changes');
 assert.match(code, /ResizeObserver\(\(\) => this\._scheduleDraw\(\)\)/, 'resize is coalesced');
 assert.match(code, /if \(this\._drawRaf \|\| !this\.isConnected\) return/, 'only one animation frame per update');
