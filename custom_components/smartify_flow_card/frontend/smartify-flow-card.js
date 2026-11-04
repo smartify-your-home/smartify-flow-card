@@ -189,6 +189,7 @@ class SmartifyFlowCard extends HTMLElement {
     this._radialOrder = [];
     this._paths = new Map();
     this._historyMode=this._historyMode||'live';
+    this._todayPeakTs=this._todayPeakTs||0;
     this._historyCache=this._historyCache||new Map();
     this._historySeq=this._historySeq||0;
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
@@ -199,6 +200,7 @@ class SmartifyFlowCard extends HTMLElement {
     this._h = h;
     if (!this._raf) this._raf = requestAnimationFrame(() => { this._raf = null; this._update(); });
     if(this._historyMode==='live')this._maybeEnergy();
+    if(this._historyMode==='live')this._maybeLivePeak();
   }
 
   getCardSize() { return 8; }
@@ -341,6 +343,20 @@ class SmartifyFlowCard extends HTMLElement {
   }
 
 
+
+  async _maybeLivePeak(){
+    const id=this._c?.grid?.import_total;
+    if(!id||!this._h||this._livePeakLoading||Date.now()-this._todayPeakTs<300000)return;
+    this._todayPeakTs=Date.now();this._livePeakLoading=true;
+    const day=sfcLocalDate(new Date()),start=sfcDateWindow(day,day).from;
+    try{
+      const result=await this._getStatistics([id],start-300000,Date.now(),'5minute');
+      const points=sfcHistoryPoints(result[id],this._st(id)?.attributes?.unit_of_measurement);
+      this._livePeak=sfcQuarterPeak(points,start,Math.floor(Date.now()/900000)*900000);
+    }catch(_){this._livePeak=null;}
+    finally{this._livePeakLoading=false;if(this._historyMode==='live')this._update();}
+  }
+
   _historyIds(){
     const c=this._c;
     const ids=new Set([c.solar.energy_total,c.grid.import_total,c.grid.export_total]);
@@ -380,7 +396,7 @@ class SmartifyFlowCard extends HTMLElement {
     try{
       // Short-term 5-minute statistics are retained for a limited period.
       // Hourly statistics remain usable for older days, without a peak claim.
-      const primary=await this._getStatistics(ids,window.from-3600000,window.to,'hour');
+      const primary=await this._getStatistics(ids,window.from-3600000,window.to+3600000,'hour');
       const peakId=this._c.grid.import_total;
       let fine={};
       if(peakId&&window.to>Date.now()-11*86400000){
@@ -477,7 +493,7 @@ class SmartifyFlowCard extends HTMLElement {
     this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>{
       ++this._historySeq;this._historyMode='live';this._historyLoading=false;this._historyError='';
       this.shadowRoot.querySelector('.history-overlay')?.remove();
-      this._historyStatus();this._update();this._maybeEnergy();
+      this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
     });
     this.shadowRoot.querySelector('.history-date').addEventListener('click',()=>this._openHistoryDialog());
     this._historyStatus();
@@ -1042,12 +1058,12 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     row(3, exportPct,
       hasExp ? exp.toFixed(2)+' kWh · eingespeist' : 'Einspeisezähler erforderlich',
       'DES PV-ERTRAGS');
-    const peak=m.historical?m.peak:null;
+    const peak=m.historical?m.peak:this._livePeak;
     const pvEl=r.querySelector('.quarter-value'),pt=r.querySelector('.quarter-time');
     pvEl.textContent=peak?peak.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
     const fmt=t=>new Date(t).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     pt.textContent=peak?fmt(peak.from)+' – '+new Date(peak.to).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):
-      (m.historical?'Keine vollständigen Viertelstundenwerte verfügbar':'Im historischen Datumsmodus verfügbar');
+      (m.historical?'Keine vollständigen Viertelstundenwerte verfügbar':'Keine vollständigen Viertelstundenwerte heute verfügbar');
   }
 
   _layoutRadial() {
