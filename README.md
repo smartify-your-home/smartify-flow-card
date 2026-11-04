@@ -1,3 +1,7 @@
+## Historische Linien beim Wechsel Live → Monat → Tag
+
+Beim Wechsel der Zeitfilter wird die SVG-Geometrie nach Wiederanzeige des Flow-Containers ein zweites Mal im nächsten Animationsframe geprüft. Die Pfade und laufenden Animationen bleiben erhalten. Ein Gerät mit positivem historischem Verbrauch, dessen kWh nicht vollständig einer verfügbaren Quelle zugeordnet werden können, zeigt nun ausdrücklich **„Quellenzuordnung unvollständig“** mit offener Energiemenge. Das ist keine erfundene Zuordnung: Ohne verfügbare Quelle wird weiterhin keine Verbindung gezeichnet. Für Verbraucher mit 0 kWh werden weiterhin keine Linien erzeugt.
+
 # Smartify Flow Card – Home-Assistant-Integration
 
 **Integration v0.6.16 · Karte v0.6.16**
