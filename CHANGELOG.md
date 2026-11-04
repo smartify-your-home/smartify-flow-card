@@ -1,3 +1,10 @@
+## v0.6.10 – Leistungssortierung in Liste und Radial, optionale Rest-Kachel unten (2026-11-04)
+
+- Alle Verbraucher einschließlich „Nicht erfasst“ und „Sonstige“ werden in Liste **und Radialring** nach aktueller Leistung absteigend sortiert; feste Rest-Endposition aus dem bisherigen Radialmodus entfernt.
+- Neuer Editor-Schalter **„Nicht erfasst in Listenansicht immer unten“** (`rest_always_last`, Standard aus). Wirkt auf klassische Liste und den schmalen, zweispaltigen Radial-Fallback; im echten Radialring bleibt die Watt-Reihenfolge maßgeblich.
+- Vorhandene Kachel-DOM-Knoten und SVG-Animationszeiten werden weiterhin wiederverwendet; im breiten Radialmodus ändern sich Positionen nur bei tatsächlicher Rangänderung. Sortierwechsel beeinflussen weder PV-Zuteilung noch Quellenanteile.
+- Regressionstests für Listen-Sortierung und Radial-Stabilität angepasst; Home-Assistant-Livetest für verschiedene Displaybreiten steht noch aus.
+
 ## v0.6.9 – Quellen-Badge in der Wertzeile (2026-11-03)
 
 - Verbraucher zeigen die Quellenanteile wieder als kompaktes Badge (wie bis v0.3.0), jetzt auf Höhe des Leistungswerts statt neben dem Namen.
