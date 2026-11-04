@@ -19,6 +19,8 @@ assert.match(code,/rest=balance\?\.rest\?\?null/);
 assert.match(code,/visible\.push\(\{key:'_other'/,'other is grouped known devices');
 assert.match(code,/valid\.push|visible\.push\(\{key:'_rest'/,'rest tile is separate');
 assert.match(code,/const candidates=\[\.\.\.all\]/,'allocation computed before other aggregation');
+assert.match(code,/all\.sort\(\(x,y\)=>y\.energy-x\.energy/,'historical overflow selects highest kWh first');
+assert.match(code,/Historisches Quellenmodell \(Näherung\)/,'historical tooltip uses correct energy units');
 assert.match(code,/'Bezug: '\+this\._fmtKwh\(m\.impT\)/);
 assert.match(code,/'Lieferung: '\+this\._fmtKwh\(m\.expT\)/);
 for(const key of ['charge_total','discharge_total'])
