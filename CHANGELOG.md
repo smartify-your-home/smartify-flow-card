@@ -1,3 +1,12 @@
+## v0.6.11 – Historische Energieansicht und 15-Minuten-Netzbezug (2026-11-04)
+
+- Zwei kompakte, responsive Kartenbuttons **Live** und **Datum**, Dialog für einzelnen vergangenen Tag oder abgeschlossenen Zeitraum bis 31 Tage. Interaktion im Dialog lässt ihn offen; nur OK/Abbrechen/Live schließen ihn.
+- Historische kWh aus Recorder-Gesamtenergie-Statistiken (PV, Netzbezug, Einspeisung, pro Verbraucher); fehlende Summen werden nicht als 0 interpretiert. Modellierte Quellenanteile als Näherung, keine historische Akku-Aufteilung ohne Energiezähler.
+- Eigene Statistikzeile **Max. 15-Min.-Netzbezug** mit kW und fester Viertelstunde aus den 5-Minuten-Statistik-Summen des **Netzbezugszählers**. Kein gleitender Maximalwert, keine Schätzung bei unvollständigen Quartalen. Heute auch im Live-Modus, sofern kurzfristige Recorder-Daten vorhanden.
+- On-demand-Abfrage, 5-Minuten-Cache und begrenzte Zeitfenster; keine weitere Home-Assistant-Ressourcenregistrierung.
+- Tests für Recorder-Zeitgrenzen, Reset/Messlücken, Datumsvalidierung und UI-Regressionsschutz. **Einschränkung:** 5-Minuten-Recorder-Daten sind nicht unbegrenzt verfügbar; die Browser-Interaktion auf Home Assistant/iOS ist noch separat zu prüfen.
+- Rückwärtskompatibilität: bestehende Kartenkonfigurationen unverändert, Live-Ansicht ist Standard. Keine automatische Änderung oder Migration an gespeicherten Dashboards.
+
 ## v0.6.10 – Leistungssortierung in Liste und Radial, optionale Rest-Kachel unten (2026-11-04)
 
 - Alle Verbraucher einschließlich „Nicht erfasst“ und „Sonstige“ werden in Liste **und Radialring** nach aktueller Leistung absteigend sortiert; feste Rest-Endposition aus dem bisherigen Radialmodus entfernt.
