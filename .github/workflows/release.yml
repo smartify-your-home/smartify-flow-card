@@ -48,6 +48,7 @@ jobs:
           node tests/test_allocation_visuals.cjs
           node tests/test_historical_view.cjs
           node tests/test_historical_balance.cjs
+          node tests/test_historical_periods.cjs
       - name: Publish immutable version tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
