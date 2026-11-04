@@ -1,3 +1,12 @@
+## v0.6.16 – Benannte PV-Anlagen und getrennte Energiezähler (2026-11-04)
+
+- Photovoltaik im visuellen Karteneditor unterstützt beliebig viele Anlagen mit frei wählbarem Namen, eigenem Leistungssensor und eigenem Gesamtenergiezähler sowie Hinzufügen und Entfernen.
+- Live-Leistung wird aus allen konfigurierten PV-Leistungssensoren addiert; der gemeinsame PV-Knoten und seine restliche Darstellung bleiben bestehen.
+- Historische Erträge werden pro PV-Anlage aus eigenen HA-Recorder-Statistiken ermittelt und anschließend addiert. PV-Anlagen mit späterem Statistikbeginn (z. B. Balkon ab Juli) erhalten einen als teilweise fehlend gekennzeichneten Start statt eines erfundenen Null-Zählerstandes. Vor dem Installationsdatum beträgt der Beitrag null.
+- Bestehendes `solar.power`/`solar.energy_total` wird beim Öffnen des visuellen Editors in eine erste Anlage übertragen. Gemeinsamer PV-Kachelname, Icon und Prognose sowie übrige Editorbereiche bleiben erhalten.
+- Neue Regressionstests `tests/test_pv_plants.cjs`; Validierungs- und Release-Workflows erweitert.
+- Die historische Auswertung benötigt weiterhin korrekte Langzeitstatistiken; beschädigte Recorder-Ausreißer können nicht durch die Karte korrigiert werden.
+
 ## v0.6.15 – Jahreswerte bei fehlender Vorjahresstunde wiederherstellen (2026-11-04)
 
 - Regression aus v0.6.14 behoben: Jahres-PV und der davon abhängige Restverbrauch wurden bei fehlendem 31.12.-Stundenpunkt vollständig unterdrückt, selbst wenn ab 1.1. Statistikwerte existierten.

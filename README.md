@@ -1,8 +1,30 @@
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.15 · Karte v0.6.15**
+**Integration v0.6.16 · Karte v0.6.16**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
+
+## Mehrere benannte PV-Anlagen (ab v0.6.16)
+
+Im Karteneditor unter **Photovoltaik** können beliebig viele PV-Anlagen angelegt und entfernt werden. Jede Anlage hat einen frei wählbaren **Namen**, einen **Leistungssensor (W/kW)** und einen **kumulierten Gesamtenergiezähler (kWh)**. Beide Sensoren werden über denselben suchbaren, nach Geräteklasse gefilterten Entity-Picker wie bisher gewählt. Die Namen (z. B. Dach, Balkon, Garage) dienen der Konfiguration; in der Flow Card erscheint weiterhin eine einzige PV-Quellenkachel mit dem frei wählbaren gemeinsamen PV-Namen und Icon.
+
+Die **Live-PV-Leistung** ist die Summe der einzelnen Leistungswerte. **Heute/Tag/Monat/Jahr/freier Zeitraum** summiert die unabhängig ermittelten Energiezuwächse der einzelnen Recorder-Statistikreihen. Beginnt die Statistik einer neuen PV-Anlage erst nach dem Jahresanfang, wird deren erster verfügbarer Stundenwert als *Teilzeitraum* gekennzeichnet; es wird nicht fälschlich der bestehende Gesamtzählerstand als Ertrag betrachtet. Liegt die Erstinstallation nach dem betrachteten Zeitraum, beträgt ihr Beitrag null. Fehlen benötigte tatsächliche Statistikwerte, wird keine fiktive Null eingesetzt.
+
+**Bestehende Karten bleiben gültig:** Die bisherigen Einstellungen `solar.power` und `solar.energy_total` werden beim Öffnen des Karteneditors in eine erste Anlage unter `solar.plants` überführt. Name und Icon der gemeinsamen Kachel, Prognosesensoren, Grid/Batterie/Verbraucher-Einstellungen bleiben unverändert. Bei einer einzelnen Anlage bleibt die Anzeige wie bisher. Beispiel:
+
+```yaml
+solar:
+  name: PV
+  plants:
+    - name: Dach
+      power: sensor.solaredge_se10k_rwb48_ac_power
+      energy_total: sensor.solaredge_se10k_rwb48_ac_energy
+    - name: Balkon
+      power: sensor.balkon_pv_leistung
+      energy_total: sensor.total_balkon_pv_ertrag
+```
+
+Die beispielhaften Leistungssensor-IDs sind vor dem Speichern durch die tatsächlich vorhandenen HA-Entitäten zu ersetzen.
 
 ## Historische Jahressummen aus echten Zählerständen (ab v0.6.15)
 
@@ -61,7 +83,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.15`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.16`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -83,7 +105,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.15
+/smartify_flow_card/smartify-flow-card.js?v=0.6.16
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -100,7 +122,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.15
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.16
       type: module
 ```
 
@@ -142,7 +164,7 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.15`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.16`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 
