@@ -454,6 +454,7 @@ class SmartifyFlowCard extends HTMLElement {
       if(kwh==null){missing.push(id);continue;}
       all.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000});
     }
+    all.sort((x,y)=>y.energy-x.energy||String(x.key).localeCompare(String(y.key)));
     const measured=all.reduce((sum,n)=>sum+n.energy,0);
     const balance=sfcHistoricalBalance(pv,imp,exp,discharge,charge,measured,hasBattery);
     const rest=balance?.rest??null;
@@ -1026,7 +1027,9 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         }
       }
       if (isSourceConsumer(n)) {
-        el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (PV: kleinste Verbraucher zuerst)`;
+        el.title = m.historical
+          ? 'Historisches Quellenmodell (Näherung): PV '+this._fmtKwh((n.pvW||0)/1000)+' kWh, Akku '+this._fmtKwh((n.batteryW||0)/1000)+' kWh, Netz '+this._fmtKwh((n.gridW||0)/1000)+' kWh, nicht zugeordnet '+this._fmtKwh((n.unassignedW||0)/1000)+' kWh'
+          : `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (PV: kleinste Verbraucher zuerst)`;
       }
       el.classList.toggle('warn', !!warn);
     };
