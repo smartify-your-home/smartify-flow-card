@@ -1,3 +1,12 @@
+## v0.6.13 – Tag, Monat, Jahr und monatsübergreifende historische Auswahl (2026-11-04)
+
+- Oben in der Flow Card drei kompakte Schnellbuttons **Tag (heute)**, **Monat (laufender Monat)** und **Jahr (laufendes Jahr)**; direkte Anzeige historischer kWh ab Periodenbeginn **bis jetzt**. Bestehende Buttons **Live** und **Datum** bleiben unverändert.
+- Der Datum-Dialog erlaubt beliebige monats-/jahresübergreifende Einzel- und Mehrtageszeiträume bis **5 Jahre**. Keine künstliche 31-Tage-Grenze mehr. Tag „heute“ erlaubt, zukünftige Daten weiterhin gesperrt.
+- Für große Zeiträume effizient direkte Recorder-Energiedifferenzen anfordern statt zahlreiche Stundenwerte. Gleitender 60-Sekunden-Cache bei offenen Zeiträumen (heute), 5 Minuten bei abgeschlossenen Daten.
+- Viertelstundenmaximum niemals auf eine unvollständige historische Datenmenge extrapolieren; bei fehlenden 5-Minuten-Daten oder langen Zeiträumen „nicht verfügbar“. Historische Akku-/Restverbrauchs- und Einspeisewerte bleiben erhalten.
+- Neue Regressionsprüfung für Monats-/Jahreswechsel, Zeitraumvalidierung, aktuelle Teilzeiträume, Popup und Abfrage. Home-Assistant-Livetest auf allen Displaybreiten noch ausständig.
+- Keine Umstellung der bestehenden Lovelace-Konfiguration oder neuer Entitäten erforderlich. Bei HACS-Updates kann einmaliges Neuladen der Browserseite nötig sein.
+
 ## v0.6.12 – Historische Netz- und Akku-Energiebilanz (2026-11-04)
 
 - In der historischen Netzkachel stehen jetzt Netzbezug und Einspeisung **getrennt** in kWh, auch bei Verwendung eines gemeinsamen Netzsaldo-Leistungssensors.

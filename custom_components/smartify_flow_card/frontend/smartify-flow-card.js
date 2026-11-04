@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.12';
+const SFC_VERSION = '0.6.13';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -132,6 +132,23 @@ function sfcDateWindow(a,b) {
   y.setDate(y.getDate()+1);
   return {from:+x,to:+y};
 }
+
+function sfcQuickPeriod(mode,now=new Date()) {
+  const today=sfcLocalDate(now);
+  if(mode==='day')return {start:today,end:today};
+  if(mode==='month')return {start:sfcLocalDate(new Date(now.getFullYear(),now.getMonth(),1)),end:today};
+  if(mode==='year')return {start:sfcLocalDate(new Date(now.getFullYear(),0,1)),end:today};
+  return null;
+}
+function sfcValidatePeriod(start,end,now=new Date()){
+  const range=sfcDateWindow(start,end);
+  if(!range||range.from>+now||end>sfcLocalDate(now))return null;
+  // Bound worst-case work without imposing artificial month boundaries.
+  const cap=new Date(range.from);cap.setFullYear(cap.getFullYear()+5);
+  if(range.to>+cap)return null;
+  return {from:range.from,to:Math.min(range.to,+now),isToday:end===sfcLocalDate(now)};
+}
+
 function sfcHistoryPoints(items,unit) {
   const mult=String(unit||'kWh').toLowerCase()==='wh'?.001:String(unit||'kWh').toLowerCase()==='mwh'?1000:1;
   const map=new Map();
@@ -205,6 +222,7 @@ class SmartifyFlowCard extends HTMLElement {
     this._radialOrder = [];
     this._paths = new Map();
     this._historyMode=this._historyMode||'live';
+    this._historyPreset=this._historyPreset||null;
     this._todayPeakTs=this._todayPeakTs||0;
     this._historyCache=this._historyCache||new Map();
     this._historySeq=this._historySeq||0;
@@ -389,7 +407,10 @@ class SmartifyFlowCard extends HTMLElement {
     }
     el.textContent=label;
     this.shadowRoot.querySelector('.history-live').classList.toggle('selected',this._historyMode==='live');
-    this.shadowRoot.querySelector('.history-date').classList.toggle('selected',this._historyMode==='history');
+    this.shadowRoot.querySelector('.history-date').classList.toggle('selected',this._historyMode==='history'&&!this._historyPreset);
+    for(const mode of ['day','month','year']){
+      this.shadowRoot.querySelector('.history-'+mode).classList.toggle('selected',this._historyMode==='history'&&this._historyPreset===mode);
+    }
   }
   async _getStatistics(ids,from,to,period){
     if(!ids.length)return {};
@@ -397,47 +418,69 @@ class SmartifyFlowCard extends HTMLElement {
       start_time:new Date(from).toISOString(),end_time:new Date(to).toISOString(),
       period:period,types:['sum']});
   }
-  async _loadHistory(start,end){
-    const window=sfcDateWindow(start,end);
-    if(!window||Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z')>=31*86400000||window.to>new Date(sfcLocalDate(new Date())+'T00:00:00').getTime()){
-      this._historyError='Ungültiges Datum oder Zeitraum über 31 Tage.';this._historyStatus();return;
+  async _loadHistory(start,end,preset=null){
+    const range=sfcValidatePeriod(start,end);
+    if(!range){
+      this._historyError='Ungültiger Zeitraum (maximal 5 Jahre, kein zukünftiges Datum).';
+      this._historyStatus();return;
     }
-    const seq=++this._historySeq, ids=this._historyIds(), key=[start,end,...ids].join('|');
-    this._historyMode='history';this._historyRange={start,end};this._historyLoading=true;
-    this._historyData=null;
-    this._historyError='';this._historyStatus();this._update();
-    if(this._historyCache.has(key)){
-      const cache=this._historyCache.get(key);
-      if(cache.until>Date.now()){this._historyData=cache.data;this._historyLoading=false;this._historyStatus();this._update();return;}
+    const seq=++this._historySeq,ids=this._historyIds();
+    const key=[start,end,...ids].join('|');
+    this._historyMode='history';this._historyPreset=preset;
+    this._historyRange={start,end};this._historyLoading=true;
+    this._historyData=null;this._historyError='';this._historyStatus();this._update();
+    const cache=this._historyCache.get(key);
+    if(cache?.until>Date.now()){
+      this._historyData=cache.data;this._historyLoading=false;
+      this._historyStatus();this._update();return;
     }
     try{
-      // Short-term 5-minute statistics are retained for a limited period.
-      // Hourly statistics remain usable for older days, without a peak claim.
-      const primary=await this._getStatistics(ids,window.from-3600000,window.to+3600000,'hour');
+      // statistic_during_period returns the cumulative-energy change for any
+      // interval, including the partial current day. One small result per sensor
+      // instead of thousands of hourly rows for whole-year views.
+      const energy={};
+      await Promise.all(ids.map(async id=>{
+        try{
+          const result=await this._h.callWS({
+            type:'recorder/statistic_during_period',
+            statistic_id:id,
+            fixed_period:{start_time:new Date(range.from).toISOString(),end_time:new Date(range.to).toISOString()},
+            types:['change']
+          });
+          const change=result?.change;
+          const unit=(this._st(id)?.attributes?.unit_of_measurement||'kWh').toLowerCase();
+          const factor=unit==='wh'?0.001:unit==='mwh'?1000:1;
+          energy[id]=change==null||!Number.isFinite(Number(change))||Number(change)<0
+            ?null:Number(change)*factor;
+        }catch(_){energy[id]=null;}
+      }));
       const peakId=this._c.grid.import_total;
-      let fine={};
-      if(peakId&&window.to>Date.now()-11*86400000){
-        const shortFrom=Math.max(window.from-300000,Date.now()-11*86400000);
-        try{fine=await this._getStatistics([peakId],shortFrom,Math.min(window.to,Date.now()),'5minute');}
-        catch(_){fine={};}
+      let peak=null;
+      // HA 5-minute stats have short retention: never label an incomplete
+      // 15-minute sample set as the peak of an entire older period.
+      const validPeakRange=range.to-range.from<=10*86400000 &&
+        range.from>=Date.now()-10*86400000;
+      if(peakId&&validPeakRange){
+        try{
+          const completeEnd=Math.floor(range.to/900000)*900000;
+          if(completeEnd>range.from){
+            const fine=await this._getStatistics([peakId],range.from-300000,completeEnd,'5minute');
+            const finePoints=sfcHistoryPoints(fine[peakId],this._st(peakId)?.attributes?.unit_of_measurement);
+            peak=sfcQuarterPeak(finePoints,range.from,completeEnd);
+          }
+        }catch(_){peak=null;}
       }
       if(seq!==this._historySeq||this._historyMode!=='history')return;
-      const energy={},points={};
-      for(const id of ids){
-        const unit=this._st(id)?.attributes?.unit_of_measurement||'kWh';
-        points[id]=sfcHistoryPoints(primary[id],unit);
-        energy[id]=sfcEnergyDelta(points[id],window.from,window.to);
-      }
-      const finePoints=peakId?sfcHistoryPoints(fine[peakId],this._st(peakId)?.attributes?.unit_of_measurement):null;
-      const peak=sfcQuarterPeak(finePoints,window.from,Math.min(window.to,Math.floor(Date.now()/900000)*900000));
       this._historyData={energy,peak};
-      this._historyCache.set(key,{until:Date.now()+300000,data:this._historyData});
+      this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),data:this._historyData});
       while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
-    }catch(err){
+    }catch(_){
       if(seq!==this._historySeq)return;
       this._historyData=null;this._historyError='Recorder-Statistiken nicht verfügbar';
     }finally{
-      if(seq===this._historySeq){this._historyLoading=false;this._historyStatus();this._update();}
+      if(seq===this._historySeq){
+        this._historyLoading=false;this._historyStatus();this._update();
+      }
     }
   }
   _historicalModel(){
@@ -512,20 +555,20 @@ class SmartifyFlowCard extends HTMLElement {
       '<h3 tabindex="-1">Datum auswählen</h3><label>Auswahl<select class="history-type"><option value="day">Einzelner Tag</option><option value="range">Zeitraum</option></select></label>'+
       '<div class="history-inputs"><label>Von<input class="history-from" type="date"></label>'+
       '<label class="history-end-field" hidden>Bis<input class="history-to" type="date"></label></div>'+
-      '<p>Abgeschlossene vergangene Tage, maximal 31 Tage. Feste Viertelstunden nur bei verfügbaren 5-Minuten-Statistiken.</p>'+
+      '<p>Tag oder Zeitraum auch über Monats- und Jahresgrenzen. Bis heute, maximal 5 Jahre. Viertelstundenmaximum nur bei vollständigen 5-Minuten-Statistiken.</p>'+
       '<div class="history-buttons"><button class="history-cancel" type="button">Abbrechen</button><button class="history-ok" type="button">OK</button></div>'+
       '<div class="history-error" role="status"></div></div>';
     const today=sfcLocalDate(new Date()),y=new Date();y.setDate(y.getDate()-1);
     const type=overlay.querySelector('.history-type'),from=overlay.querySelector('.history-from'),to=overlay.querySelector('.history-to');
-    from.max=to.max=sfcLocalDate(y);from.value=this._historyRange?.start||sfcLocalDate(y);to.value=this._historyRange?.end||from.value;
+    from.max=to.max=today;from.value=this._historyRange?.start||sfcLocalDate(y);to.value=this._historyRange?.end||from.value;
     type.value=this._historyRange?.start!==this._historyRange?.end?'range':'day';
     const sync=()=>overlay.querySelector('.history-end-field').hidden=type.value!=='range';
     type.addEventListener('change',sync);sync();
     overlay.querySelector('.history-cancel').addEventListener('click',()=>overlay.remove());
     overlay.querySelector('.history-ok').addEventListener('click',()=>{
-      const end=type.value==='day'?from.value:to.value,win=sfcDateWindow(from.value,end);
-      if(!win||win.to>new Date(today+'T00:00:00').getTime()||Date.parse(end+'T00:00:00Z')-Date.parse(from.value+'T00:00:00Z')>=31*86400000){
-        overlay.querySelector('.history-error').textContent='Bitte einen gültigen Zeitraum bis 31 Tage auswählen.';return;
+      const end=type.value==='day'?from.value:to.value;
+      if(!sfcValidatePeriod(from.value,end)){
+        overlay.querySelector('.history-error').textContent='Bitte gültige Daten bis heute wählen (maximal 5 Jahre).';return;
       }
       overlay.remove();this._loadHistory(from.value,end);
     });
@@ -534,11 +577,18 @@ class SmartifyFlowCard extends HTMLElement {
   }
   _initHistoryControls(){
     this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>{
-      ++this._historySeq;this._historyMode='live';this._historyLoading=false;this._historyError='';
+      ++this._historySeq;this._historyMode='live';this._historyPreset=null;this._historyLoading=false;this._historyError='';
       this.shadowRoot.querySelector('.history-overlay')?.remove();
       this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
     });
     this.shadowRoot.querySelector('.history-date').addEventListener('click',()=>this._openHistoryDialog());
+    for(const mode of ['day','month','year']){
+      this.shadowRoot.querySelector('.history-'+mode).addEventListener('click',()=>{
+        this.shadowRoot.querySelector('.history-overlay')?.remove();
+        const period=sfcQuickPeriod(mode);
+        this._loadHistory(period.start,period.end,mode);
+      });
+    }
     this._historyStatus();
   }
 
@@ -677,8 +727,8 @@ ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padd
 .title{font-weight:800;font-size:1.05em;margin:0 0 12px 2px;color:var(--sf-txt);text-transform:uppercase;letter-spacing:.06em}
 .wrap{max-width:${maxW}px;margin:0 auto}
 
-.history-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.history-toolbar button{font:inherit;min-height:36px;padding:7px 13px;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
+.history-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.history-toolbar button{font:inherit;min-height:36px;padding:7px 10px;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
 .history-toolbar button.selected{border-color:var(--primary-color);color:var(--primary-color);font-weight:700}
 .history-status{font-size:.75em;color:var(--sf-sub);overflow-wrap:anywhere}
 .history-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:12px;background:#0009}
@@ -784,7 +834,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 <ha-card>
   <div class="wrap">
   <div class="title" hidden></div>
-  <div class="history-toolbar"><button class="history-live selected" type="button">Live</button><button class="history-date" type="button">Datum</button><span class="history-status"></span></div>
+  <div class="history-toolbar"><button class="history-live selected" type="button">Live</button><button class="history-date" type="button">Datum</button><button class="history-day" type="button">Tag</button><button class="history-month" type="button">Monat</button><button class="history-year" type="button">Jahr</button><span class="history-status"></span></div>
   <div class="flow${this._c.layout === 'radial' ? ' radial' : ''}"><svg class="lines"><g class="pg"></g></svg><div class="col left"></div><div class="col right"></div></div>
   <div class="stats" hidden>
     <div class="ring"><svg viewBox="0 0 132 132">
