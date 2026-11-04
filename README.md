@@ -1,6 +1,6 @@
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.9 · Karte v0.6.9**
+**Integration v0.6.10 · Karte v0.6.10**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -8,7 +8,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.9`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.10`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -30,7 +30,7 @@ Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/sm
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.9
+/smartify_flow_card/smartify-flow-card.js?v=0.6.10
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -47,7 +47,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.9
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.10
       type: module
 ```
 
@@ -89,13 +89,13 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.9`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.9`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.10`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.10`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 
 ## Fachliche Bedienhinweise
 
-- **Quellenanzeige (ab v0.6.9):** Standard `source_display: badge` – kompaktes Badge (z. B. `100% PV`, `Netz`, `60% PV`) rechts in der Zeile des Leistungswerts. Der farbige Prozent-Fußstreifen ist optional über `source_display: strip` bzw. im Editor unter **Darstellung & Animation** wählbar.
+- **Quellenanzeige (ab v0.6.10):** Standard `source_display: badge` – kompaktes Badge (z. B. `100% PV`, `Netz`, `60% PV`) rechts in der Zeile des Leistungswerts. Der farbige Prozent-Fußstreifen ist optional über `source_display: strip` bzw. im Editor unter **Darstellung & Animation** wählbar.
 
 - **PV-Verteilung:** PV-Zuteilung vom kleinsten Verbraucher zum größten (unabhängig von der Anzeige-Sortierung). Jeder Verbraucher hat unten einen **22 px hohen, segmentierten Farbstreifen**: Gelb = PV, Grün = entladender Akku, **individuelle Gerätefarbe = Netzanteil**, neutral = nicht zugeordnet. Die Breite entspricht der individuellen Watt-Zuteilung; die auf ganze Prozentwerte gerundeten Labels stehen mittig **im jeweiligen Farbsegment**, soweit dort Platz ist. Bei sehr kleinen Anteilen bleibt die Farbe sichtbar, der Text entfällt zur Vermeidung von Überlappungen. Segment-Elemente werden nur beim Quellenwechsel neu erstellt; die Textplatzprüfung mit Hysterese verhindert flackernde Prozentangaben, insbesondere beim Netzanteil. Tooltip/Kachelbeschreibung enthält alle Wattwerte. Das Modell ist eine priorisierte Visualisierung und keine physikalische Einzelmessung.
 - **Quellen und Netz:** Ein Netzsaldo-Sensor mit wählbarem Vorzeichen oder getrennte Bezugs-/Einspeisesensoren; eine dynamische Netzkachel zeigt immer beide bisherigen Tagesenergiezähler an.
@@ -116,6 +116,12 @@ Unter **Karte bearbeiten → Darstellung & Animation** stehen drei zusätzliche 
 - **Minimale/Maximale Linienbreite:** `line_width_min: 1.5` und `line_width_max: 4.5` (Pixel, standardmäßig). Werte werden auf den Bereich 0,5–20 px begrenzt, und die maximale Breite wird nie kleiner als die minimale verwendet.
 
 Die Einstellungen wirken in der klassischen und radialen Ansicht. Die bestehenden Animationszeiten werden bei Sensorupdates nicht ständig zurückgesetzt. Bestehende Karten erhalten weiterhin das bisherige PV-Zuordnungsmodell, aber standardmäßig die neue Quadratwurzel-Optik der Linien; wer die bisherige lineare Optik bevorzugt, wählt `line_scale: linear`. Ein Beispiel für YAML: `allocation: proportional`, `line_scale: sqrt`, `line_width_min: 1.5`, `line_width_max: 6`.
+
+## Watt-Sortierung in klassischer und radialer Ansicht (ab v0.6.10)
+
+**Standard:** Alle Verbraucher einschließlich `_rest` („Nicht erfasst“) und `_other` („Sonstige“) werden nach aktueller Watt-Leistung absteigend angezeigt, sowohl in der klassischen Liste als auch im Radialring. Der Radialring darf seine Kachelpositionen bei tatsächlichen Rangwechseln ändern; vorhandene Kachel-DOM-Nodes und laufende Animationen werden weiterverwendet.
+
+**Option unter Verbraucher:** `rest_always_last: true` / „Nicht erfasst in Listenansicht immer unten“ fixiert ausschließlich `_rest` am Ende der **klassischen Liste** und der **schmalen, als Liste dargestellten Radialansicht** (z. B. iPhone). Im breiten echten Radialring gilt immer die Watt-Reihenfolge. Ohne die Option bleibt die Watt-Reihenfolge überall Standard. Bei gleicher Leistung entscheidet stabil die Entity-ID. Die PV-Zuteilungspriorität (`allocation`) wird durch die Anzeige-Sortierung nicht verändert.
 
 ## Einheitliche Entitäten- und Icon-Suche (ab v0.6.7)
 
