@@ -20,6 +20,9 @@ const daily=h.points([{start:new Date(d-3600000).toISOString(),sum:5},{start:new
 assert.equal(h.delta(daily,d,d+86400000),7,'hourly energy is anchored to end-of-period rows');
 assert.equal(h.delta(h.points([{start:new Date(d).toISOString(),sum:5}],'kWh'),d,d+86400000),null,'missing full-day boundary stays unavailable');
 assert.equal(h.points([{start:new Date(start).toISOString(),sum:1250}],'Wh').get(start),1.25);
+assert.equal(h.points([{start:start,sum:1500}],'Wh').get(start),1.5,'websocket unix-ms timestamp supported');
+const partial=h.points(samples.filter(x=>x.start!==new Date(start+5*one).toISOString()),'kWh');
+assert.equal(h.peak(partial,start,start+one*6),null,'missing one quarter suppresses entire period maximum');
 assert.equal(h.bounds('2026-11-30','2026-11-31'),null,'invalid calendar date rejected');
 assert.equal(h.bounds('2026-11-04','2026-11-03'),null,'reversed interval rejected');
 assert.match(src,/class="history-live selected"/);
