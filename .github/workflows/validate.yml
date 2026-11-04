@@ -34,3 +34,4 @@ jobs:
           node tests/test_historical_view.cjs
           node tests/test_historical_balance.cjs
           node tests/test_historical_periods.cjs
+          node tests/test_pv_plants.cjs
