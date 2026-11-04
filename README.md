@@ -25,7 +25,7 @@ battery:
 
 Die beiden neuen Felder sind optional; bestehende Konfigurationen bleiben unverändert. Der Live-Modus und die Netzsaldo-Vorzeichenlogik sind unverändert. Regressionstest: `node tests/test_historical_balance.cjs`. Die echte Bedienung auf iPhone/iPad und die Übereinstimmung unterschiedlicher Zählertypen sind im Home Assistant zu prüfen.
 
-## Historische Ansicht und Viertelstundenmaximum (ab v0.6.12)
+## Historische Ansicht und Viertelstundenmaximum (ab v0.6.11)
 
 Direkt in der Karte befinden sich **Live** und **Datum**. Live schaltet ohne Bestätigung auf aktuelle W-/kW-Werte zurück. Datum öffnet einen responsiven, nicht durch Hintergrundklicks oder Sensorupdates schließbaren Kalenderdialog. Einzelner vergangener Tag oder abgeschlossener Zeitraum von höchstens 31 Tagen; **OK** übernimmt, **Abbrechen** verwirft, **Live** beendet den historischen Modus. Keine zusätzlichen Lovelace-Ressourcen oder Home-Assistant-Helper.
 
