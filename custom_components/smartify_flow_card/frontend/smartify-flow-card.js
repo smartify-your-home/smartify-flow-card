@@ -469,6 +469,9 @@ class SmartifyFlowCard extends HTMLElement {
     const key=[start,end,...ids].join('|');
     this._historyMode='history';this._historyPreset=preset;
     this._historyRange={start,end};this._historyLoading=true;
+    // A period change temporarily hides .flow; make sure the SVG is laid out
+    // again after the new tiles become measurable, including on iOS/WebKit.
+    this._historyDrawPending=true;
     this._historyData=null;this._historyError='';this._historyStatus();this._update();
     const cache=this._historyCache.get(key);
     if(cache?.until>Date.now()){
@@ -591,6 +594,10 @@ class SmartifyFlowCard extends HTMLElement {
           a[k]=overflow.reduce((sum,x)=>sum+(assigned.get(x.key)?.[k]||0),0);
       }else a=assigned.get(n.key)||{};
       n.pvW=a.pv||0;n.batteryW=a.battery||0;n.gridW=a.grid||0;n.unassignedW=a.unassigned||0;
+      // An incomplete Recorder/source budget must be visible, rather than
+      // silently showing a measured consumer with no energy-flow line.
+      if(n.energy>0.001&&n.unassignedW>0.01)
+        n.historyNote='Quellenzuordnung unvollständig · '+(n.unassignedW/1000).toFixed(2)+' kWh offen';
     }
     const right=sfcSortLoadTiles(visible,c.rest_always_last&&c.layout!=='radial');
     const sources=[
@@ -639,7 +646,7 @@ class SmartifyFlowCard extends HTMLElement {
   }
   _initHistoryControls(){
     this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>{
-      ++this._historySeq;this._historyMode='live';this._historyPreset=null;this._historyLoading=false;this._historyError='';
+      ++this._historySeq;this._historyMode='live';this._historyPreset=null;this._historyLoading=false;this._historyDrawPending=true;this._historyError='';
       this.shadowRoot.querySelector('.history-overlay')?.remove();
       this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
     });
@@ -1030,6 +1037,13 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       if (!this.isConnected || !this._flowEl) return;
       this._fitSourceLabels();
       this._drawLines();
+      // After history filters hide/show the flow container, its first
+      // measured geometry can still be stale for one layout frame. Recheck
+      // once without rebuilding tiles or restarting existing path animations.
+      if(this._historyDrawPending){
+        this._historyDrawPending=false;
+        requestAnimationFrame(()=>this._scheduleDraw());
+      }
     });
   }
 
@@ -1377,6 +1391,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       const src = all.find((n) => n.key === f.from);
       const dash = SFC_DASH[f.from] || SFC_DASH._solar;
       let p = this._paths.get(id);
+      if(p && p.path.parentNode!==this._pg) this._pg.appendChild(p.path);
       if (!p) {
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('class', dash.k);
