@@ -22,6 +22,12 @@ Diese Datei ist für **jede** Weiterentwicklung verbindlich. Vor jedem Eingriff 
 6. **Jede Funktionsänderung aktualisiert:** README-Features, Konfigurationsreferenz und Beispiele soweit betroffen; CHANGELOG mit Auswirkungen, Migration/Kompatibilität, ggf. bekannte Einschränkungen; UI-Hinweise/Hilfetexte und Übersetzungen, sobald betroffen. Nicht veraltete HACS- oder In-App-Beschreibungen stehenlassen.
 7. Bei Integration-Releases sicherstellen, dass HACS das Repository als Typ **Integration** installieren kann und dass die Ressource nach einem Neustart mit Versionsquery registriert wird.
 
+## Jahresenergie-Recorder-Baseline ab v0.6.14 – verbindlich
+- `recorder/statistic_during_period` kann die erste Statistiksumme als 0 ansetzen, wenn keine Statistik an der Zeitfenster-Startgrenze existiert. Diese Rückfalllogik darf nicht unbesehen als produzierte PV-/Hausenergie erscheinen.
+- Vor jeder historischen `change`-Abfrage für die betroffenen Energiezähler eine stündliche Statistik am Zeitfensterbeginn abrufen; nur akzeptieren, wenn ein Summenpunkt für den **vorhergehenden Stundenbucket** (`from - 1h`) vorhanden ist. Fehlt der Grenzwert, Ergebnis `null` (nicht verfügbar). Kein interpolierter Anfang, keine implizite 0.
+- Für historische kWh `units: {energy:'kWh'}` ausdrücklich anfragen und nicht noch einmal anhand der aktuellen `unit_of_measurement` umrechnen. Vorhandene Stunden- und 5-Minuten-Rohstatistik-Verarbeitung für den Viertelstundenpeak behalten.
+- `tests/test_historical_view.cjs` und `tests/test_historical_periods.cjs` müssen Jahresstart ohne historische Stats, gültige Startgrenze, fehlende Werte und Unit-Request regressionssicher abdecken. Live-Modus und die Quellenbilanz dürfen nicht regressieren. Bei echten historischen Recorder-Ausreißern zusätzlich Statistikreparatur nötig.
+
 ## Historische Schnellzeiträume ab v0.6.13 – verbindlich
 - Oben in der Karte **Live / Datum / Tag / Monat / Jahr** als responsive Buttons. **Tag** = heute 00:00 bis jetzt, **Monat** = erster Kalendertag des laufenden Monats 00:00 bis jetzt, **Jahr** = 1. Januar des laufenden Jahres 00:00 bis jetzt. Schnellbuttons sofort anwenden; Datum-Dialog wie bisher nur nach OK anwenden. Bei Rückkehr zu Live alle Schnellbutton-Auswahlen zurücksetzen.
 - Datumseingabe: Monats- und Jahresgrenzen erlauben (keine 31-Tage-Grenze). Beliebige historische Zeiträume bis 5 Jahre. Zukunft gesperrt. Heutigen Tag zulassen, bei noch laufenden Zeiträumen nur Werte **bis jetzt**, nie bis morgen verlangen.
