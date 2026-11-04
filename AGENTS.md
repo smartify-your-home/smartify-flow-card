@@ -1,3 +1,8 @@
+## Historische Filterwechsel und SVG-Linien (Fix nach v0.6.16)
+- Abfolge Live → Monat → Tag muss bei positivem Quellenanteil dieselben Linien wie eine direkte Tagesauswahl anzeigen. Nach dem vorübergehenden Ausblenden des Flow-Containers eine zusätzliche Layout-Messung im nächsten Animationsframe ausführen, ohne bestehende Pfade/Animationen neu zu erzeugen.
+- Ein gemessener historischer Verbrauch ohne vollständig verfügbare Quellenzuordnung erhält einen eindeutigen Hinweis auf die offene kWh-Menge; keine künstliche Verbindung und keine erfundenen Quellenwerte.
+- Bereits erzeugte SVG-Pfade bei DOM-Entkopplung wieder in die aktive SVG-Gruppe einhängen. Tests auch für historische Filterwechsel und unvollständige Quelle ergänzen.
+
 # AGENTS.md – Smartify Flow Card
 
 Diese Datei ist für **jede** Weiterentwicklung verbindlich. Vor jedem Eingriff lesen, nach jeder Änderung Dokumentation, Tests und Release-Metadaten prüfen. Die Dokumentation ist Bestandteil der Funktion, kein optionaler Nachtrag.

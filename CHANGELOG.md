@@ -1,3 +1,10 @@
+## v0.6.17 – Historische Filterwechsel / Linien (2026-11-04)
+
+- SVG-Verbindungen nach dem Umschalten Live → Monat → Tag in einem zusätzlichen Layoutframe nachmessen. Vorhandene DOM-Pfade und Animationen behalten.
+- Eventuell entkoppelte vorhandene SVG-Pfade wieder in die aktuelle Liniengruppe einsetzen.
+- Historische Verbraucher mit positiver, aber nicht vollständig zugeordneter Energie kennzeichnen die offene kWh-Menge, statt ohne Erklärung ohne Linie zu bleiben. Kein künstlicher Quellenfluss; 0-kWh-Verbraucher ohne Linie.
+- Statische Regressionstests für Filterwechsel, SVG-Reconciliation und fehlende Quellbudgets.
+
 ## v0.6.16 – Benannte PV-Anlagen und getrennte Energiezähler (2026-11-04)
 
 - Photovoltaik im visuellen Karteneditor unterstützt beliebig viele Anlagen mit frei wählbarem Namen, eigenem Leistungssensor und eigenem Gesamtenergiezähler sowie Hinzufügen und Entfernen.
