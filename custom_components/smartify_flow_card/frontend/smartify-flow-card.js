@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.14';
+const SFC_VERSION = '0.6.15';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -176,13 +176,29 @@ function sfcQuarterPeak(points,from,to) {
   }
   return expected>0&&complete===expected?result:null;
 }
-function sfcCheckedHistoricalChange(change, startPoints, startTime) {
-  // HA's statistic_during_period can use a zero starting sum when the first
-  // recorded statistic is newer than the requested start. Reject that case.
-  // A statistic with start = previous hour ends at the requested hour boundary.
-  if(!startPoints?.has(startTime-3600000))return null;
-  const value=Number(change);
-  return change==null||!Number.isFinite(value)||value<0?null:value;
+function sfcVerifiedBoundaryEnergy(startHourly,endHourly,endFine,from,to) {
+  // HA statistics SUM belongs to the END of the bucket starting at timestamp.
+  // A valid initial baseline is the preceding 1h bucket. If that bucket is
+  // unavailable but the first 1h bucket starts exactly at the beginning,
+  // use its end as an explicitly partial baseline (never an implicit zero).
+  const startPoint=startHourly?.get(from-3600000);
+  const firstHour=startHourly?.get(from);
+  const exactStart=Number.isFinite(startPoint);
+  const initial=exactStart?startPoint:Number.isFinite(firstHour)?firstHour:null;
+  const measuredFrom=exactStart?from:from+3600000;
+  if(initial==null)return null;
+  let lastTime=-Infinity,lastValue=null;
+  for(const [points,duration] of [[endHourly,3600000],[endFine,300000]]){
+    if(!points)continue;
+    for(const [time,value] of points){
+      const bucketEnd=time+duration;
+      if(bucketEnd<=to&&bucketEnd>=to-7200000&&bucketEnd>lastTime&&Number.isFinite(value)){
+        lastTime=bucketEnd;lastValue=value;
+      }
+    }
+  }
+  if(lastValue==null||lastTime<=measuredFrom||lastValue<initial-0.001)return null;
+  return {kwh:Math.max(0,lastValue-initial),partialStart:!exactStart,through:lastTime};
 }
 function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recorded, hasBattery = false) {
   const required = [pv, imported, exported, recorded];
@@ -411,7 +427,8 @@ class SmartifyFlowCard extends HTMLElement {
     let label='';
     if(this._historyMode==='history'){
       label=this._historyLoading?'Lade historische Energiedaten …':this._historyError||
-        (this._historyRange?this._historyRange.start+' – '+this._historyRange.end:'');
+        (this._historyRange?this._historyRange.start+' – '+this._historyRange.end:'')+
+        (this._historyData?.partialIds?.length?' · Teilweise erst ab erster verfügbarer Stundenstatistik':'');
     }
     el.textContent=label;
     this.shadowRoot.querySelector('.history-live').classList.toggle('selected',this._historyMode==='live');
@@ -420,11 +437,11 @@ class SmartifyFlowCard extends HTMLElement {
       this.shadowRoot.querySelector('.history-'+mode).classList.toggle('selected',this._historyMode==='history'&&this._historyPreset===mode);
     }
   }
-  async _getStatistics(ids,from,to,period){
+  async _getStatistics(ids,from,to,period,units=null){
     if(!ids.length)return {};
     return this._h.callWS({type:'recorder/statistics_during_period',statistic_ids:ids,
       start_time:new Date(from).toISOString(),end_time:new Date(to).toISOString(),
-      period:period,types:['sum']});
+      period:period,types:['sum'],...(units?{units}:{})});
   }
   async _loadHistory(start,end,preset=null){
     const range=sfcValidatePeriod(start,end);
@@ -443,29 +460,27 @@ class SmartifyFlowCard extends HTMLElement {
       this._historyStatus();this._update();return;
     }
     try{
-      // Ask for the hour preceding the requested start. Without that row
-      // Home Assistant can use an implicit 0 as the initial sum and erroneously
-      // include old counter energy in an annual 'change' statistic.
-      const baseline=await this._getStatistics(ids,range.from-3600000,range.from,'hour');
-      const energy={};
-      await Promise.all(ids.map(async id=>{
-        const unit=this._st(id)?.attributes?.unit_of_measurement||'kWh';
-        const points=sfcHistoryPoints(baseline[id],unit);
-        if(!points.has(range.from-3600000)){energy[id]=null;return;}
-        try{
-          const result=await this._h.callWS({
-            type:'recorder/statistic_during_period',
-            statistic_id:id,
-            fixed_period:{start_time:new Date(range.from).toISOString(),end_time:new Date(range.to).toISOString()},
-            types:['change'],
-            units:{energy:'kWh'}
-          });
-          // The explicit unit request avoids dependence on the sensor's current
-          // display unit (which may have changed since the stored statistics).
-          const change=sfcCheckedHistoricalChange(result?.change,points,range.from);
-          energy[id]=change;
-        }catch(_){energy[id]=null;}
-      }));
+      // Read only the BEGINNING and END of the selected period. Never rely
+      // on recorder/statistic_during_period 'change': if its first recorded
+      // point is missing, HA may subtract an implicit zero and inflate energy.
+      const [head,tail,fineTail]=await Promise.all([
+        this._getStatistics(ids,range.from-3600000,range.from+3600000,'hour',{energy:'kWh'}),
+        this._getStatistics(ids,range.to-7200000,range.to,'hour',{energy:'kWh'}),
+        range.isToday
+          ?this._getStatistics(ids,range.to-3600000,range.to,'5minute',{energy:'kWh'}).catch(()=>({}))
+          :Promise.resolve({})
+      ]);
+      const energy={},partialIds=[],lastTimes=[];
+      for(const id of ids){
+        // Requested units are already kWh; don't scale them a second time.
+        const first=sfcHistoryPoints(head[id],'kWh');
+        const last=sfcHistoryPoints(tail[id],'kWh');
+        const fine=sfcHistoryPoints(fineTail[id],'kWh');
+        const value=sfcVerifiedBoundaryEnergy(first,last,fine,range.from,range.to);
+        energy[id]=value?.kwh??null;
+        if(value?.partialStart)partialIds.push(id);
+        if(value?.through)lastTimes.push(value.through);
+      }
       const peakId=this._c.grid.import_total;
       let peak=null;
       // HA 5-minute stats have short retention: never label an incomplete
@@ -483,7 +498,7 @@ class SmartifyFlowCard extends HTMLElement {
         }catch(_){peak=null;}
       }
       if(seq!==this._historySeq||this._historyMode!=='history')return;
-      this._historyData={energy,peak};
+      this._historyData={energy,peak,partialIds,lastTimes};
       this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),data:this._historyData});
       while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
     }catch(_){
