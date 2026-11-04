@@ -1,3 +1,12 @@
+## v0.6.12 – Historische Netz- und Akku-Energiebilanz (2026-11-04)
+
+- In der historischen Netzkachel stehen jetzt Netzbezug und Einspeisung **getrennt** in kWh, auch bei Verwendung eines gemeinsamen Netzsaldo-Leistungssensors.
+- Im Batterie-Editor zwei zusätzliche, optionale getypte Energiesensor-Auswahlen für den fortlaufenden **Ladeenergie-** und **Entladeenergie-Gesamtzähler** (`battery.charge_total`, `battery.discharge_total`); Standard-Konfiguration bleibt kompatibel.
+- Historische Kachel **„Nicht erfasst“** aus PV + Bezug − Lieferung + Entladung − Ladung − Summe erfasster Geräte, bei vollständigen und konsistenten historischen Daten. Fehlende Geräte-Energie bleibt Bestandteil des Restverbrauchs, nicht fälschlich null; fehlende Quellen-Energie oder widersprüchliche Messgrenzen führen zu **nicht verfügbar**.
+- Historische **„Sonstige“** gruppiert bekannte Geräte oberhalb der Anzeigebegrenzung weiterhin separat und ohne Doppelzählung. Modellierte PV/Akku/Netz-Anteile bleiben Schätzungen.
+- Neue Tests für mit/ohne Akku, Messlücken, negative Restbilanzen, UI-Beschriftung und getypte Picker; beide GitHub-Workflows aktualisiert.
+- **Kompatibilität:** Kein Umbau bestehender Lovelace-Konfigurationen; ohne Batterie unveränderte Energiebilanz. Für Speicherbilanzen müssen beide neuen Akkuzähler vom Recorder erfasst werden. Live-HA- und Touch-Tests stehen weiterhin aus.
+
 ## v0.6.11 – Historische Energieansicht und 15-Minuten-Netzbezug (2026-11-04)
 
 - Zwei kompakte, responsive Kartenbuttons **Live** und **Datum**, Dialog für einzelnen vergangenen Tag oder abgeschlossenen Zeitraum bis 31 Tage. Interaktion im Dialog lässt ihn offen; nur OK/Abbrechen/Live schließen ihn.

@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.11';
+const SFC_VERSION = '0.6.12';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -158,6 +158,16 @@ function sfcQuarterPeak(points,from,to) {
     if(valid){complete++;if(!result||delta*4>result.kw)result={kw:delta*4,from:t,to:t+q};}
   }
   return expected>0&&complete===expected?result:null;
+}
+function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recorded, hasBattery = false) {
+  const required = [pv, imported, exported, recorded];
+  if (hasBattery) required.push(discharged, charged);
+  if (required.some(x => x == null || !Number.isFinite(x) || x < 0)) return null;
+  const total = pv + imported - exported + (hasBattery ? discharged - charged : 0);
+  const difference = total - recorded;
+  // Negative residual indicates overlapping/incorrect meters, not an unrecorded load.
+  if (total < -0.001 || difference < -0.001) return null;
+  return { total: Math.max(0,total), rest: Math.max(0,difference) };
 }
 function sfcEnergyDelta(points,from,to) {
   // Full cumulative-energy boundaries only; do not manufacture estimates.
@@ -365,7 +375,7 @@ class SmartifyFlowCard extends HTMLElement {
 
   _historyIds(){
     const c=this._c;
-    const ids=new Set([c.solar.energy_total,c.grid.import_total,c.grid.export_total]);
+    const ids=new Set([c.solar.energy_total,c.grid.import_total,c.grid.export_total,c.battery?.charge_total,c.battery?.discharge_total]);
     for(const id of this._consumerEntities())ids.add(this._energyId(id));
     return [...ids].filter(Boolean);
   }
@@ -435,38 +445,64 @@ class SmartifyFlowCard extends HTMLElement {
     const c=this._c,energy=this._historyData.energy;
     const get=id=>id&&Number.isFinite(energy[id])?energy[id]:null;
     const pv=get(c.solar.energy_total),imp=get(c.grid.import_total),exp=get(c.grid.export_total);
-    const pvUsed=pv!=null&&exp!=null?Math.max(0,pv-exp):null;
-    const total=pvUsed!=null&&imp!=null?pvUsed+imp:null;
-    const valid=[],missing=[];
+    const hasBattery=!!(c.battery?.power);
+    const charge=hasBattery?get(c.battery.charge_total):0;
+    const discharge=hasBattery?get(c.battery.discharge_total):0;
+    const all=[],missing=[];
     for(const id of this._consumerEntities()){
       const kwh=get(this._energyId(id)),name=this._name(id);
-      if(kwh==null)missing.push(id);
-      else valid.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000});
+      if(kwh==null){missing.push(id);continue;}
+      all.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000});
     }
-    const measured=valid.reduce((a,n)=>a+n.energy,0);
-    const rest=total!=null&&missing.length===0?Math.max(0,total-measured):null;
-    if(c.show_rest&&rest!=null)valid.push({key:'_rest',kind:'load',name:c.rest_name,icon:'mdi:home-outline',color:SFC_COL.rest,w:rest*1000,energy:rest});
-    if(missing.length)valid.push({key:'_other',kind:'load',name:'Ohne Energiedaten ('+missing.length+')',icon:'mdi:help-circle-outline',color:SFC_COL.other,w:0,energy:null});
+    all.sort((x,y)=>y.energy-x.energy||String(x.key).localeCompare(String(y.key)));
+    const measured=all.reduce((sum,n)=>sum+n.energy,0);
+    const balance=sfcHistoricalBalance(pv,imp,exp,discharge,charge,measured,hasBattery);
+    const rest=balance?.rest??null;
+    // Missing device counters remain part of the rest balance: never subtract them
+    // as zero, and never create a second "other" energy bucket for them.
+    const visible=all.slice(0,c.max_consumers);
+    const overflow=all.slice(c.max_consumers);
+    if(overflow.length){
+      const sum=overflow.reduce((v,n)=>v+n.energy,0);
+      visible.push({key:'_other',kind:'load',name:'Sonstige ('+overflow.length+')',icon:'mdi:dots-horizontal-circle-outline',color:SFC_COL.other,w:sum*1000,energy:sum});
+    }
+    if(c.show_rest && rest!=null){
+      visible.push({key:'_rest',kind:'load',name:c.rest_name,icon:'mdi:home-outline',color:SFC_COL.rest,w:rest*1000,energy:rest,
+        historyNote:missing.length?missing.length+' Geräte ohne Energiezähler enthalten':'Energiebilanz'});
+    }
+    const pvHome=pv==null||exp==null||charge==null?null:Math.max(0,pv-exp-charge);
     const allocation=c.allocation==='proportional'?sfcAllocateProportional:sfcAllocateSources;
-    const assigned=allocation(valid.map(x=>({key:x.key,w:x.w})),{pv:(pvUsed||0)*1000,battery:0,grid:(imp||0)*1000});
-    for(const n of valid){
-      const a=assigned.get(n.key)||{};
-      n.pvW=a.pv||0;n.gridW=a.grid||0;n.batteryW=0;n.unassignedW=a.unassigned||0;
+    const supply={pv:(pvHome||0)*1000,battery:(discharge||0)*1000,grid:(imp||0)*1000};
+    // Allocate individual devices including overflow, plus rest. Aggregate overflow
+    // only AFTER allocating to avoid changing smallest-first priorities.
+    const candidates=[...all];
+    if(c.show_rest&&rest!=null)candidates.push({key:'_rest',w:rest*1000});
+    const assigned=allocation(candidates.map(x=>({key:x.key,w:x.w})),supply);
+    for(const n of visible){
+      let a;
+      if(n.key==='_other'){
+        a={};
+        for(const k of ['pv','battery','grid','unassigned'])
+          a[k]=overflow.reduce((sum,x)=>sum+(assigned.get(x.key)?.[k]||0),0);
+      }else a=assigned.get(n.key)||{};
+      n.pvW=a.pv||0;n.batteryW=a.battery||0;n.gridW=a.grid||0;n.unassignedW=a.unassigned||0;
     }
-    const right=sfcSortLoadTiles(valid,c.rest_always_last&&c.layout!=='radial');
+    const right=sfcSortLoadTiles(visible,c.rest_always_last&&c.layout!=='radial');
     const sources=[
       {key:'_solar',kind:'solar',name:c.solar.name||'PV',icon:c.solar.icon||'mdi:solar-power',color:SFC_COL.solar,energy:pv,w:(pv||0)*1000,entity:c.solar.energy_total},
       {key:'_grid',kind:'grid',name:'Netz',icon:c.grid.icon||'mdi:transmission-tower',color:SFC_COL.grid,energy:imp,w:(imp||0)*1000,entity:c.grid.import_total}
     ];
-    if(c.battery?.power)sources.push({key:'_battery',kind:'battery',name:c.battery.name||'Akku',icon:c.battery.icon||'mdi:home-battery',color:SFC_COL.battery,energy:null,w:0,entity:c.battery.power});
+    if(hasBattery)sources.push({key:'_battery',kind:'battery',name:c.battery.name||'Akku',icon:c.battery.icon||'mdi:home-battery',color:SFC_COL.battery,energy:discharge,w:(discharge||0)*1000,charge,discharge,entity:c.battery.power});
     const left=sfcSourceOrder(c.source_order,sources.map(n=>n.key)).map(k=>sources.find(n=>n.key===k));
     const flows=[];
     for(const n of right){
       if(n.pvW>0)flows.push({from:'_solar',to:n.key,w:n.pvW});
+      if(n.batteryW>0)flows.push({from:'_battery',to:n.key,w:n.batteryW});
       if(n.gridW>0)flows.push({from:'_grid',to:n.key,w:n.gridW});
     }
-    return {historical:true,left,right,flows,pvT:pv,impT:imp,expT:exp,
-      peak:this._historyData.peak,missingCount:missing.length,limitPct:null,fc:null,fcRem:null};
+    return {historical:true,left,right,flows,pvT:pv,impT:imp,expT:exp,chargeT:charge,dischargeT:discharge,
+      houseEnergy:balance?.total??null,restEnergy:rest,peak:this._historyData.peak,missingCount:missing.length,
+      limitPct:null,fc:null,fcRem:null};
   }
   _openHistoryDialog(){
     if(this.shadowRoot.querySelector('.history-overlay'))return;
@@ -991,13 +1027,26 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         }
       }
       if (isSourceConsumer(n)) {
-        el.title = `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (PV: kleinste Verbraucher zuerst)`;
+        el.title = m.historical
+          ? 'Historisches Quellenmodell (Näherung): PV '+this._fmtKwh((n.pvW||0)/1000)+' kWh, Akku '+this._fmtKwh((n.batteryW||0)/1000)+' kWh, Netz '+this._fmtKwh((n.gridW||0)/1000)+' kWh, nicht zugeordnet '+this._fmtKwh((n.unassignedW||0)/1000)+' kWh'
+          : `Modellierte Zuordnung: PV ${this._fmtW(n.pvW || 0)}, Akku ${this._fmtW(n.batteryW || 0)}, Netz ${this._fmtW(n.gridW || 0)}, offen ${this._fmtW(n.unassignedW || 0)}; Gesamt ${this._fmtW(n.w)} (PV: kleinste Verbraucher zuerst)`;
       }
       el.classList.toggle('warn', !!warn);
     };
     for (const n of m.left) {
-      if(m.historical){set(n,n.energy==null?'–':this._fmtKwh(n.energy)+' kWh',
-        n.kind==='battery'?'Akku-Energie nicht konfiguriert':'Ausgewählter Zeitraum','','',null);continue;}
+      if(m.historical){
+        if(n.kind==='grid'){
+          set(n,this._fmtKwh(m.impT)+' kWh',
+            'Bezug: '+this._fmtKwh(m.impT)+' kWh',
+            'Lieferung: '+this._fmtKwh(m.expT)+' kWh','',null);
+        }else if(n.kind==='battery'){
+          set(n,n.energy==null?'–':this._fmtKwh(n.energy)+' kWh',
+            'Ladung: '+this._fmtKwh(m.chargeT)+' kWh',
+            'Entladung: '+this._fmtKwh(m.dischargeT)+' kWh','',null);
+        }else set(n,n.energy==null?'–':this._fmtKwh(n.energy)+' kWh',
+          'Ausgewählter Zeitraum','','',null);
+        continue;
+      }
       if (n.kind === 'solar') {
         set(n, this._fmtW(n.w),
           m.pvT != null ? `${this._fmtKwh(m.pvT)} kWh heute` : '',
@@ -1017,7 +1066,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     }
     for (const n of m.right) {
       if(m.historical)set(n,n.energy==null?'–':this._fmtKwh(n.energy)+' kWh',
-        n.energy==null?'Keine Energiedaten':'Modellierte Quellenanteile','','',null);
+        n.energy==null?'Keine Energiedaten':(n.historyNote||'Modellierte Quellenanteile'),'','',null);
       else set(n,this._fmtW(n.w),n.energy!=null?this._fmtKwh(n.energy)+' kWh heute':'','','',null);
     }
     this._updateStats(m);
@@ -2063,6 +2112,10 @@ class SmartifyFlowCardEditor extends HTMLElement {
     sec = this._section('Batteriespeicher', 'mdi:home-battery');
     this._picker(sec,'Batterie-Leistung',['battery','power'],'power');
     this._picker(sec,'Ladezustand (SoC)',['battery','soc'],'soc');
+    this._picker(sec,'Akku-Ladeenergie Gesamtenergiezähler (kWh)',['battery','charge_total'],'energy',
+      'Optional: gesamte in den Akku geladene Energie. Für historische Restverbrauchsberechnung zusammen mit Entladeenergie erforderlich.');
+    this._picker(sec,'Akku-Entladeenergie Gesamtenergiezähler (kWh)',['battery','discharge_total'],'energy',
+      'Optional: gesamte aus dem Akku entladene Energie. Keine Tageswerte, sondern fortlaufende Gesamtenergie.');
     this._input(sec,'Name',['battery','name']);
     this._picker(sec,'Akku-Icon',['battery','icon'],'icon','Icon nach Namen suchen und aus den Symbolvorschlägen auswählen.');
     this._toggle(sec,'Vorzeichen der Batterieleistung umkehren',['battery','invert']);

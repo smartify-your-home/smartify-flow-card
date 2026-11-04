@@ -32,3 +32,4 @@ jobs:
           node tests/test_picker_types.cjs
           node tests/test_allocation_visuals.cjs
           node tests/test_historical_view.cjs
+          node tests/test_historical_balance.cjs
