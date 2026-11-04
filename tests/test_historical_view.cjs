@@ -24,7 +24,7 @@ assert.equal(h.bounds('2026-11-30','2026-11-31'),null,'invalid calendar date rej
 assert.equal(h.bounds('2026-11-04','2026-11-03'),null,'reversed interval rejected');
 assert.match(src,/class="history-live selected"/);
 assert.match(src,/class="history-date"/);
-assert.match(src,/class="history-overlay"/);
+assert.match(src,/overlay\.className='history-overlay'/);
 assert.match(src,/class="history-ok"/);
 assert.match(src,/class="history-cancel"/);
 assert.match(src,/overlay\.querySelector\('h3'\)\.focus/,'focus heading instead of input/dropdown');
