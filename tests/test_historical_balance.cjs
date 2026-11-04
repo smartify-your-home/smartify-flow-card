@@ -1,0 +1,26 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const code=fs.readFileSync(path.join(__dirname,'..','custom_components/smartify_flow_card/frontend/smartify-flow-card.js'),'utf8');
+const a=code.indexOf('function sfcHistoricalBalance('),b=code.indexOf('function sfcEnergyDelta(',a);
+assert(a>0&&b>a,'pure historical balance helper');
+const calc=vm.runInNewContext(code.slice(a,b)+'\nsfcHistoricalBalance');
+const same=x=>JSON.parse(JSON.stringify(x));
+assert.deepEqual(same(calc(30,12,15,0,0,18,false)),{total:27,rest:9},'PV 30 + grid import 12 - export 15 - devices 18 = rest 9');
+assert.deepEqual(same(calc(30,12,15,5,3,18,true)),{total:29,rest:11},'charge/discharge flows included');
+assert.equal(calc(30,12,15,null,3,18,true),null,'battery without both counters is unknown');
+assert.equal(calc(null,12,15,0,0,18,false),null,'PV missing is unknown');
+assert.equal(calc(2,1,0,0,0,5,false),null,'negative residual means inconsistent or overlapping meters');
+assert.equal(calc(30,12,15,0,0,0,false).rest,27,'no device energy records means all demand is unrecorded');
+assert.match(code,/c\.battery\?\.charge_total,c\.battery\?\.discharge_total/,'battery counters included in recorder query');
+assert.match(code,/sfcHistoricalBalance\(pv,imp,exp,discharge,charge,measured,hasBattery\)/);
+assert.match(code,/rest=balance\?\.rest\?\?null/);
+assert.match(code,/visible\.push\(\{key:'_other'/,'other is grouped known devices');
+assert.match(code,/valid\.push|visible\.push\(\{key:'_rest'/,'rest tile is separate');
+assert.match(code,/const candidates=\[\.\.\.all\]/,'allocation computed before other aggregation');
+assert.match(code,/'Bezug: '\+this\._fmtKwh\(m\.impT\)/);
+assert.match(code,/'Lieferung: '\+this\._fmtKwh\(m\.expT\)/);
+for(const key of ['charge_total','discharge_total'])
+  assert.match(code,new RegExp("'battery','" + key + "'\\],'energy'"),'energy-only picker '+key);
+console.log('Historical house balance, grid import/export and battery config tests passed');
