@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.13';
+const SFC_VERSION = '0.6.14';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -175,6 +175,14 @@ function sfcQuarterPeak(points,from,to) {
     if(valid){complete++;if(!result||delta*4>result.kw)result={kw:delta*4,from:t,to:t+q};}
   }
   return expected>0&&complete===expected?result:null;
+}
+function sfcCheckedHistoricalChange(change, startPoints, startTime) {
+  // HA's statistic_during_period can use a zero starting sum when the first
+  // recorded statistic is newer than the requested start. Reject that case.
+  // A statistic with start = previous hour ends at the requested hour boundary.
+  if(!startPoints?.has(startTime-3600000))return null;
+  const value=Number(change);
+  return change==null||!Number.isFinite(value)||value<0?null:value;
 }
 function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recorded, hasBattery = false) {
   const required = [pv, imported, exported, recorded];
@@ -435,23 +443,27 @@ class SmartifyFlowCard extends HTMLElement {
       this._historyStatus();this._update();return;
     }
     try{
-      // statistic_during_period returns the cumulative-energy change for any
-      // interval, including the partial current day. One small result per sensor
-      // instead of thousands of hourly rows for whole-year views.
+      // Ask for the hour preceding the requested start. Without that row
+      // Home Assistant can use an implicit 0 as the initial sum and erroneously
+      // include old counter energy in an annual 'change' statistic.
+      const baseline=await this._getStatistics(ids,range.from-3600000,range.from,'hour');
       const energy={};
       await Promise.all(ids.map(async id=>{
+        const unit=this._st(id)?.attributes?.unit_of_measurement||'kWh';
+        const points=sfcHistoryPoints(baseline[id],unit);
+        if(!points.has(range.from-3600000)){energy[id]=null;return;}
         try{
           const result=await this._h.callWS({
             type:'recorder/statistic_during_period',
             statistic_id:id,
             fixed_period:{start_time:new Date(range.from).toISOString(),end_time:new Date(range.to).toISOString()},
-            types:['change']
+            types:['change'],
+            units:{energy:'kWh'}
           });
-          const change=result?.change;
-          const unit=(this._st(id)?.attributes?.unit_of_measurement||'kWh').toLowerCase();
-          const factor=unit==='wh'?0.001:unit==='mwh'?1000:1;
-          energy[id]=change==null||!Number.isFinite(Number(change))||Number(change)<0
-            ?null:Number(change)*factor;
+          // The explicit unit request avoids dependence on the sensor's current
+          // display unit (which may have changed since the stored statistics).
+          const change=sfcCheckedHistoricalChange(result?.change,points,range.from);
+          energy[id]=change;
         }catch(_){energy[id]=null;}
       }));
       const peakId=this._c.grid.import_total;
