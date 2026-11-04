@@ -387,7 +387,7 @@ class SmartifyFlowCard extends HTMLElement {
   }
   async _loadHistory(start,end){
     const window=sfcDateWindow(start,end);
-    if(!window||window.to-window.from>32*86400000||window.from>Date.now()){
+    if(!window||window.to-window.from>32*86400000||window.to>new Date(sfcLocalDate(new Date())+'T00:00:00').getTime()){
       this._historyError='Ungültiges Datum oder Zeitraum über 31 Tage.';this._historyStatus();return;
     }
     const seq=++this._historySeq, ids=this._historyIds(), key=[start,end,...ids].join('|');
@@ -473,19 +473,19 @@ class SmartifyFlowCard extends HTMLElement {
       '<h3 tabindex="-1">Datum auswählen</h3><label>Auswahl<select class="history-type"><option value="day">Einzelner Tag</option><option value="range">Zeitraum</option></select></label>'+
       '<div class="history-inputs"><label>Von<input class="history-from" type="date"></label>'+
       '<label class="history-end-field" hidden>Bis<input class="history-to" type="date"></label></div>'+
-      '<p>Historische Energiedaten: maximal 31 Tage. Feste Viertelstunden nur bei verfügbaren 5-Minuten-Statistiken.</p>'+
+      '<p>Abgeschlossene vergangene Tage, maximal 31 Tage. Feste Viertelstunden nur bei verfügbaren 5-Minuten-Statistiken.</p>'+
       '<div class="history-buttons"><button class="history-cancel" type="button">Abbrechen</button><button class="history-ok" type="button">OK</button></div>'+
       '<div class="history-error" role="status"></div></div>';
     const today=sfcLocalDate(new Date()),y=new Date();y.setDate(y.getDate()-1);
     const type=overlay.querySelector('.history-type'),from=overlay.querySelector('.history-from'),to=overlay.querySelector('.history-to');
-    from.max=to.max=today;from.value=this._historyRange?.start||sfcLocalDate(y);to.value=this._historyRange?.end||from.value;
+    from.max=to.max=sfcLocalDate(y);from.value=this._historyRange?.start||sfcLocalDate(y);to.value=this._historyRange?.end||from.value;
     type.value=this._historyRange?.start!==this._historyRange?.end?'range':'day';
     const sync=()=>overlay.querySelector('.history-end-field').hidden=type.value!=='range';
     type.addEventListener('change',sync);sync();
     overlay.querySelector('.history-cancel').addEventListener('click',()=>overlay.remove());
     overlay.querySelector('.history-ok').addEventListener('click',()=>{
       const end=type.value==='day'?from.value:to.value,win=sfcDateWindow(from.value,end);
-      if(!win||win.from>Date.now()||win.to-win.from>32*86400000){
+      if(!win||win.to>new Date(today+'T00:00:00').getTime()||win.to-win.from>32*86400000){
         overlay.querySelector('.history-error').textContent='Bitte einen gültigen Zeitraum bis 31 Tage auswählen.';return;
       }
       overlay.remove();this._loadHistory(from.value,end);
@@ -646,6 +646,7 @@ ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padd
 .history-dialog{box-sizing:border-box;width:min(100%,420px);max-height:90dvh;overflow:auto;padding:18px;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color);opacity:1;border:1px solid var(--divider-color);border-radius:var(--sf-r);box-shadow:0 10px 30px #0005}
 .history-dialog h3{margin:0 0 14px}.history-dialog label{display:grid;gap:4px;font-size:.85em}
 .history-dialog input,.history-dialog select{width:100%;min-width:0;min-height:44px;box-sizing:border-box;padding:9px;color:var(--primary-text-color);background:var(--secondary-background-color);border:1px solid var(--divider-color);border-radius:var(--sf-r);font:inherit}
+.history-end-field[hidden]{display:none}
 .history-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:12px;margin:12px 0}
 .history-dialog p,.history-error{font-size:.75em;color:var(--secondary-text-color)}
 .history-buttons{display:flex;gap:8px;justify-content:flex-end}
@@ -918,7 +919,13 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
   _update() {
     if (!this._h || !this._c || !this._flowEl) return;
     const m=this._historyMode==='history'?this._historicalModel():this._compute();
-    if(!m)return;
+    if(!m){
+      this._flowEl.hidden=true;
+      this.shadowRoot.querySelector('.stats').hidden=true;
+      return;
+    }
+    this._flowEl.hidden=false;
+    this.shadowRoot.querySelector('.stats').hidden=!this._c.show_stats;
     this._m=m;
     this._syncNodes(this._leftEl, m.left);
     this._syncNodes(this._rightEl, m.right);
