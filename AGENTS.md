@@ -2,6 +2,11 @@
 
 Diese Datei ist für **jede** Weiterentwicklung verbindlich. Vor jedem Eingriff lesen, nach jeder Änderung Dokumentation, Tests und Release-Metadaten prüfen. Die Dokumentation ist Bestandteil der Funktion, kein optionaler Nachtrag.
 
+## Mehrere PV-Anlagen ab v0.6.16 – verbindlich
+- Unter `solar.plants` besitzt jede Anlage einen frei wählbaren `name`, `power` und `energy_total`. Beliebig viele Anlagen; gemeinsamer PV-Knoten/Name/Icon und Prognose bleiben erhalten.
+- Im Live-Modus alle PV-Leistungssensoren addieren, in Historie pro PV-Statistik getrennt deren Zuwachs ermitteln und anschließend addieren. Anlagen, deren Statistik erst mitten im Jahr beginnt, dürfen Jahresansicht nicht blockieren; niemals einen imaginären Null-Baseline-Zählerstand annehmen.
+- Alte Kartenkonfiguration `solar.power`/`solar.energy_total` muss ohne Bearbeitung weiter funktionieren; im Editor auf eine erste Anlage umstellen. Neue Regressionen in `tests/test_pv_plants.cjs`; Documentation/Release-Metadaten synchronisieren.
+
 ## Projekt und Referenzen
 - Repository: `https://github.com/smartify-your-home/smartify-flow-card`
 - Integration: `custom_components/smartify_flow_card/`
