@@ -497,9 +497,13 @@ class SmartifyFlowCard extends HTMLElement {
         // Only for a genuinely newly installed plant, find the earliest
         // recorded day. Its first hourly sum is a partial baseline.
         if(!value&&pvIds.has(id)&&!first.size){
-          const daily=await this._getStatistics([id],range.from,range.to,'day',{energy:'kWh'});
+          const daily=await this._getStatistics([id],range.from,Date.now(),'day',{energy:'kWh'});
           const days=sfcHistoryPoints(daily[id],'kWh');
           const firstDay=[...days.keys()].filter(t=>t>=range.from&&t<range.to).sort((a,b)=>a-b)[0];
+          if(firstDay!=null&&firstDay>=range.to){
+            energy[id]=0;
+            continue;
+          }
           if(firstDay!=null){
             const opening=await this._getStatistics([id],firstDay,firstDay+86400000,'hour',{energy:'kWh'});
             const openingPts=sfcHistoryPoints(opening[id],'kWh');
