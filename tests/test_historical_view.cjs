@@ -38,7 +38,7 @@ assert.match(src,/if\(this\._historyMode==='live'\)this\._maybeLivePeak\(\)/);
 const beginning=Date.parse('2026-01-01T00:00:00.000Z');
 const today=Date.parse('2026-11-04T16:30:00.000Z');
 const h0=new Map(),h1=new Map([[beginning,500]]);
-const endStats=new Map([[today-3600000,6200]]);
+const endStats=new Map([[today-5400000,6200]]); // 15:00 bucket completes at 16:00, before 16:30
 assert.equal(h.verified(h0,endStats,null,beginning,today),null,'missing full boundary does not invent annual energy');
 const partialYear=h.verified(h1,endStats,null,beginning,today);
 assert.equal(partialYear.kwh,5700,'first hour fallback uses measured start instead of implicit 0');
