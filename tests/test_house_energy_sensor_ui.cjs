@@ -22,4 +22,6 @@ assert.match(js,/\.row \.rt,\.house-energy-description strong,\.quarter-name,.mo
 assert.match(js,/\.row \.rs,\.house-energy-description small,\.quarter-time,.monthly-entry small\{font-size:\.76em;color:/,'shared subtitles');
 assert.match(js,/\.row \.rp,\.house-energy-value,\.quarter-value,.monthly-entry strong\{font-size:1\.15em;font-weight:800/,'shared primary values');
 assert.match(js,/@media\(max-width:420px\)\{[\s\S]{0,250}\.quarter-value\{margin-left:36px;font-size:1\.15em/,'mobile value keeps same font size');
+assert.match(js,/\.val \.unit,\.house-energy-value \.unit,\.quarter-value \.unit,\.monthly-entry strong \.unit\{font-size:\.8em;font-weight:650;color:var\(--sf-txt\)\}/,'all statistic units share tile font rule');
+assert.match(js,/unit\.className='unit'/,'current values have separate unit span');
 console.log('Sensor and selected-period household energy UI checks passed');
