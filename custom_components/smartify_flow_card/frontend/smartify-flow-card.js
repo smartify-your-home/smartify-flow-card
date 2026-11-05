@@ -952,7 +952,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .row .rt,.house-energy-description strong,.quarter-name,.monthly-history summary,.monthly-entry .month-name{font-size:.7em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sf-txt)}
 .row .rs,.house-energy-description small,.quarter-time,.monthly-entry small{font-size:.76em;color:var(--sf-sub)}
 .row .rp,.house-energy-value,.quarter-value,.monthly-entry strong{font-size:1.15em;font-weight:800;color:var(--sf-txt)}
-.house-energy-value .unit{font-size:.8em;font-weight:650}
+.house-energy-value .unit,.quarter-value .unit,.monthly-entry strong .unit{font-size:.8em;font-weight:650}
 
 .row .rs b{color:var(--sf-txt)}
 .row .bar{grid-column:1 / -1}
@@ -1288,7 +1288,17 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     const fmtDate=stamp=>new Date(stamp*1000).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const currentValue=root.querySelector('.quarter-value'),currentTime=root.querySelector('.quarter-time');
     if(!currentValue||!currentTime)return;
-    currentValue.textContent=current?.kw!=null?current.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
+    const currentNumber=current?.kw!=null?current.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}):null;
+    if(currentValue.dataset.value!==String(currentNumber)){
+      currentValue.dataset.value=String(currentNumber);
+      if(currentNumber==null)currentValue.textContent='–';
+      else{
+        const unit=document.createElement('span');
+        unit.className='unit';
+        unit.textContent='kW';
+        currentValue.replaceChildren(document.createTextNode(currentNumber+' '),unit);
+      }
+    }
     currentTime.textContent=current?.start!=null?fmtDate(current.start)+' – '+new Date((current.start+900)*1000).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):
       'Noch kein vollständiger gespeicherter 15-Minuten-Wert';
     if(currentTime&&partial(current,month))currentTime.textContent+=' · Daten erst ab '+fmtDate(current.first);
@@ -1300,9 +1310,9 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       const mk=year+'-'+String(m+1).padStart(2,'0');
       const sample=this._monthlyPeaks?.[mk];
       const label=new Date(year,m,1).toLocaleDateString('de-AT',{month:'long'});
-      const value=sample?.kw!=null?sample.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
+      const value=sample?.kw!=null?sample.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}):null;
       const time=sample?.start!=null?fmtDate(sample.start)+(partial(sample,m)?' · Teilzeitraum ab '+fmtDate(sample.first):''):'Keine vollständigen gespeicherten Werte';
-      rows.push('<div class="monthly-entry"><span class="month-name">'+this._esc(label)+'</span><strong>'+this._esc(value)+'</strong><small>'+this._esc(time)+'</small></div>');
+      rows.push('<div class="monthly-entry"><span class="month-name">'+this._esc(label)+'</span><strong>'+(value==null?'–':this._esc(value)+' <span class="unit">kW</span>')+'</strong><small>'+this._esc(time)+'</small></div>');
     }
     history.innerHTML=rows.length?rows.join(''):'Noch keine abgeschlossenen Monate in diesem Jahr';
     root.querySelector('.monthly-history').hidden=!rows.length;
