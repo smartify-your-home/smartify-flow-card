@@ -1,7 +1,7 @@
 ## v0.6.23 – Einheitliche Statistik-Typografie (vorbereitet)
 
 - Alle fünf Statistikzeilen teilen nun die CSS-Typografie der ursprünglichen Zeilen: Titel 0,70 em/800/Versalien, Zusatztext 0,76 em, Hauptwert 1,15 em/800. Keine widersprüchlichen Einzelgrößen mehr.
-- Historie-Monatsnamen und kW-Werte maximal gleich groß wie die eingerückte Beschriftung „Historie“: zusätzlichen Größenfaktor 1,15 aus der Liste entfernt. Zeitstempel bleiben dezent kleiner.
+- Die eingerückte **Historie** und ihre Monatszeilen übernehmen dieselben geteilten Typografie-Regeln: „Historie“/Monatsname als Titel (0,70 em), historische kW als Hauptwert (1,15 em) und Zeitstempel als Zusatztext (0,76 em). Zusätzliche relative Skalierungen entfallen.
 - Gesamtwerte bleiben bei 1,15 em; responsive Layout und Energie-/Statistikberechnungen unverändert.
 
 ## v0.6.22 – Verbraucher mit später beginnenden Jahresstatistiken (2026-11-05)
