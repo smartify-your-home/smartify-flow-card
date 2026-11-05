@@ -1,5 +1,8 @@
 ## Schrift-Hierarchie der Statistiken (v0.6.23, vorbereitet)
 
+Wie bei den bestehenden Verbraucher-Kacheln sind die Einheiten **kWh** und **kW** in Gesamtenergiebedarf, 15-Minuten-Monatsmaximum und Monats-Historie als eigene Spans auf **80 % der Zahlenschrift** mit Schriftgewicht 650 gesetzt. Alle teilen sich eine einzige CSS-Regel mit `.val .unit`; die Zahlen selbst bleiben in der normalen Wertgröße.
+
+
 Die **fünf Statistikzeilen und die aufgeklappte Historie** verwenden nun dieselben CSS-Selektoren statt separater Größen: Überschriften 0,70 em/800/Versalien, Zusatzzeilen 0,76 em und Hauptwerte 1,15 em/800. Schriftgewicht, Zeichenabstand und Darstellung stimmen überein. Auch „Historie“ und Monatsnamen folgen der Titelregel (0,70 em), historische kW-Werte der Hauptwertregel (1,15 em) und deren Zeitstempel der Zusatztextregel (0,76 em). Die Einrückung bleibt erhalten.\n\n
 Die bisherigen Größenangaben der drei ursprünglichen Statistikzeilen sind die verbindliche Referenz. Für alle fünf Statistikzeilen gelten identische CSS-Regeln. Die eingerückte Historie behält ihre eigene Darstellung; die Monatswerte bleiben höchstens genauso groß wie ihr Titel.
 
