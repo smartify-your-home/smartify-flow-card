@@ -1,5 +1,6 @@
 ## Verbraucher mit später beginnenden historischen Statistiken ab v0.6.22 – verbindlich
 
+- Statistikbox: geringer vertikaler Grid-Abstand (8 px), verringerter unterer Innenabstand für Gesamtenergiebedarf und geringerer Abstand zur 15-Minuten-Trennlinie. Keine horizontalen/Smartphone-Regressionen und kein Einfluss auf historische Daten.\n
 - Bei fehlender Start-Statistik auch für **Verbraucher** die erste echte Tagesstatistik im ausgewählten Zeitraum lokalisieren, danach aus kleinem Stundenfenster den ersten gültigen kumulativen Stundenwert als Baseline verwenden. Tagesstatistiken mehrerer fehlender Zähler nach Möglichkeit in **einem** gebündelten Aufruf abrufen; weder Null-Baseline noch kompletten Jahres-Stundenexport verwenden.
 - Den resultierenden Wert als **Teilzeitraum** und mit realem Beginn in der jeweiligen Verbraucherkachel anzeigen. Gerät ohne belastbare Baseline/Ende weiter auslassen, keinen vermeintlich vollständigen Jahresverbrauch anzeigen. Die verifizierte Berechnung vollständiger Zeiträume bleibt vorrangig und unverändert.
 - Quelle-Warnung und Teilzeitraumhinweis müssen gleichzeitig möglich bleiben. Regression tests/test_partial_consumer_history.cjs in Validate und Release ausführen.
