@@ -24,4 +24,6 @@ assert.match(src,/\.monthly-history summary,\.monthly-entry \.month-name\{font-s
 assert.match(src,/\.quarter-time,\.monthly-entry small\{font-size:\.76em/,'history timestamps use original subtitle size');
 assert.match(src,/\.quarter-value,\.monthly-entry strong\{font-size:1\.15em/,'history values use original main value size');
 assert.ok(src.includes('class="month-name"'),'month names tagged for shared heading style');
+assert.match(src,/currentValue\.replaceChildren\(document\.createTextNode\(currentNumber\+' '\),unit\)/,'current peak uses separate smaller kW unit');
+assert.match(src,/<span class="unit">kW<\/span>/,'historical entries use separate kW unit');
 console.log('Monthly peak UI, persistent data and version footer regressions passed');
