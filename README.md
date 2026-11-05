@@ -1,5 +1,8 @@
 ## Historische Verbraucher mit Teiljahresdaten (ab v0.6.22)
 
+Auch die **geöffneten Historieneinträge** – Monatsname, kW-Wert und Zeitpunkt – verwenden jetzt größere Schrift; Zeitstempel behalten einen leicht untergeordneten, aber gut lesbaren Schriftgrad. Der schmale Smartphone-Bildschirm bleibt berücksichtigt.
+
+
 Die Statistik-Schriftgrößen sind jetzt einheitlich: Überschriften 0,70 em, Zeiträume und Zusatztexte 0,76 em sowie Hauptwerte 1,15 em. Das eingerückte Ausklappmenü **„Historie“** bleibt bewusst gut lesbar (0,83 em). Auch auf schmalen Smartphones werden Hauptwerte nicht verkleinert; die Texte dürfen umbrechen.\n\n
 Die Statistikbox verwendet kompaktere vertikale Abstände: Unter „Gesamtenergiebedarf“ rückt die Trennlinie sichtbar nach oben; die 15-Minuten-Spitze und „Historie“ folgen dichter. Die Spaltenaufteilung bleibt erhalten, auch auf Smartphone-Displays.\n\n
 Verbraucher mit Energie-Gesamtzählern, deren Recorder-Statistiken erst im laufenden Jahr oder einem anderen gewählten Zeitraum beginnen, werden **nicht mehr ausgeblendet**, wenn der Zeitraum-Anfang fehlt. Die Karte sucht bei fehlender Startgrenze gezielt den ersten vorhandenen Tages- und Stundenstatistikwert **innerhalb des ausgewählten Zeitraums**, nutzt diesen tatsächlich gemessenen kumulativen Wert als Baseline und zeigt den nachfolgenden Energieverbrauch an. In der Verbraucherkachel erscheint **„Teilzeitraum · Daten ab …“**. Es werden niemals fehlende Monate mit Null ergänzt oder der vollständige Zählerstand als Verbrauch genommen. Ohne gültige Anfangs- **oder** Endgrenze bleibt der Verbrauch weiterhin unbekannt.
