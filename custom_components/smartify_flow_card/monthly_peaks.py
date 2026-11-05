@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 import math
 
-import voluptuous as vol
+import probatio as vol
 from homeassistant.components import websocket_api
 from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.statistics import statistics_during_period
@@ -110,8 +110,12 @@ class MonthlyPeaks:
                         t = int(at)
                     else:
                         t = int(at.timestamp())
-                    if math.isfinite(float(v)):
-                        points[t] = float(v)
+                    try:
+                        value = float(v)
+                    except (TypeError, ValueError):
+                        continue
+                    if math.isfinite(value):
+                        points[t] = value
                 months = self.sensors[stat_id]["months"]
                 for timestamp, kw in quarter_peaks(points, int(start.timestamp()), int(end.timestamp())):
                     local = dt_util.as_local(datetime.fromtimestamp(timestamp, timezone.utc))
