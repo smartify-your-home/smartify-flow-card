@@ -113,6 +113,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await peaks.start()
         hass.data[DOMAIN]["monthly_peaks"] = peaks
 
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
+
     try:
         await _async_register_resource(hass, version)
     except Exception:
@@ -130,6 +132,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload config entry without removing resource or dashboard settings."""
     # Preserve the static route and WebSocket registration on reload, but stop
     # the old poller before the new instance is created.
+    await hass.config_entries.async_unload_platforms(entry, ["sensor"])
     state = hass.data.get(DOMAIN)
     if isinstance(state, dict) and state.get("monthly_peaks") is not None:
         await state["monthly_peaks"].stop()
