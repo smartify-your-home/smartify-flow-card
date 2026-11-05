@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.19';
+const SFC_VERSION = '0.6.20';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -387,7 +387,8 @@ class SmartifyFlowCard extends HTMLElement {
         if (x) ids.add(x);
       }
       const c = this._c;
-      for (const id of [...this._pvPlants().map(p=>p.energy_total), c.grid.import_total, c.grid.export_total]) {
+      for (const id of [...this._pvPlants().map(p=>p.energy_total), c.grid.import_total, c.grid.export_total,
+        c.battery?.charge_total, c.battery?.discharge_total]) {
         if (id) ids.add(id);
       }
       await Promise.all([...ids].map(async (id) => {
@@ -773,6 +774,9 @@ class SmartifyFlowCard extends HTMLElement {
     return {
       P, I, E, Bd, Bc, soc, total, share, left, right, flows, limitPct,
       pvT: this._pvToday(), impT: this._today(g.import_total, g.import_today), expT: this._today(g.export_total, g.export_today),
+      houseEnergy: sfcHistoricalBalance(this._pvToday(),this._today(g.import_total,g.import_today),
+        this._today(g.export_total,g.export_today),b?.power?this._today(b.discharge_total,null):0,
+        b?.power?this._today(b.charge_total,null):0,0,!!b?.power)?.total??null,
       fc: this._kwh(s.forecast_today), fcRem: this._kwh(s.forecast_remaining),
     };
   }
@@ -816,6 +820,8 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .history-buttons{display:flex;gap:8px;justify-content:flex-end}
 .history-buttons button{padding:9px 14px;min-height:40px;font:inherit;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
 .history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff)}
+.house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
+.house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px;font-size:.83em}.house-energy-description small{color:var(--sf-sub);font-size:.83em}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.08em}
 .quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:12px;border-top:1px solid var(--divider-color)}
 .quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1;min-width:0}.quarter-name{font-weight:700;font-size:.8em}
 .quarter-time{font-size:.7em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.1em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -929,6 +935,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       <div class="row" style="--c:${SFC_COL.grid}"><div class="rt">Netzbezug</div><div class="rp r2p">–</div><div class="rs r2s"></div><div class="bar"><i class="r2b"></i></div></div>
       <div class="row" style="--c:${SFC_COL.export}"><div class="rt">Einspeisung</div><div class="rp r3p">–</div><div class="rs r3s"></div><div class="bar"><i class="r3b"></i></div></div>
     </div>
+    <div class="house-energy-row"><ha-icon icon="mdi:home-lightning-bolt-outline"></ha-icon><div class="house-energy-description"><strong>Gesamtenergiebedarf</strong><small class="house-energy-period">Heute</small></div><strong class="house-energy-value">–</strong></div>
     <div class="quarter-row"><ha-icon icon="mdi:gauge"></ha-icon><div class="quarter-desc"><div class="quarter-name">Max. 15-Min.-Netzbezug · aktueller Monat</div><div class="quarter-time">Lade Monatsmaximum …</div></div><div class="quarter-value">–</div></div>
     <details class="monthly-history"><summary>Vormonate anzeigen</summary><div class="monthly-history-list"></div></details>
   </div>
@@ -1310,6 +1317,10 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     row(3, exportPct,
       hasExp ? exp.toFixed(2)+' kWh · eingespeist' : 'Einspeisezähler erforderlich',
       'DES PV-ERTRAGS');
+    const house=r.querySelector('.house-energy-value');
+    if(house)house.textContent=m.houseEnergy==null?'–':m.houseEnergy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kWh';
+    const period=r.querySelector('.house-energy-period');
+    if(period)period.textContent=m.historical?(this._historyPreset==='day'?'Heute':this._historyPreset==='month'?'Aktueller Monat':this._historyPreset==='year'?'Aktuelles Jahr':(this._historyRange?.start||'')+' – '+(this._historyRange?.end||'')):'Heute';
     // The peak display always refers to the CURRENT MONTH, independently
     // of the selected energy-history filter (Live/Tag/Monat/Jahr).
     this._updateMonthlyPeaks();
