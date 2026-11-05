@@ -14,4 +14,10 @@ assert.match(backend,/STORAGE_KEY = "smartify_flow_card_monthly_peaks"/,'HA pers
 assert.match(backend,/async_track_time_interval\(self.hass, self.tick, timedelta\(minutes=5\)\)/,'periodic independent collector');
 assert.match(backend,/get_instance\(self.hass\)\.async_add_executor_job/,'Recorder data queried in DB executor');
 assert.match(backend,/{"energy": "kWh"}, {"sum"}/,'explicit import energy units');
+assert.match(src,/<details class="monthly-history"><summary>Historie<\/summary>/,'compact peak archive label');
+assert.doesNotMatch(src,/<details class="monthly-history"><summary>Vormonate anzeigen/,'old label removed');
+assert.match(src,/\.monthly-history\{grid-column:1\/-1;border-top:0;margin:-5px 0 0 36px/,'history grouped with peak without divider');
+assert.match(src,/@media\(max-width:420px\)/,'narrow smartphone layout present');
+assert.match(src,/\.quarter-desc\{flex-basis:calc\(100% - 48px\)\}/,'peak title can wrap on phones');
+assert.match(src,/\.monthly-entry\{grid-template-columns:minmax\(0,1fr\) auto/,'month values stay in bounded grid');
 console.log('Monthly peak UI, persistent data and version footer regressions passed');
