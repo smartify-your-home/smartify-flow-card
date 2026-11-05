@@ -792,9 +792,10 @@ class SmartifyFlowCard extends HTMLElement {
   --sf-accent-h:var(--smartify-flow-accent-height,4px);
   --sf-gap:var(--smartify-flow-gap,14px);
 }
-ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padding:16px;overflow:hidden;font-size:${scale}em;background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) ${100 - transparency}%, transparent);}
+ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padding:16px 16px 27px;overflow:hidden;font-size:${scale}em;background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) ${100 - transparency}%, transparent);}
 .title{font-weight:800;font-size:1.05em;margin:0 0 12px 2px;color:var(--sf-txt);text-transform:uppercase;letter-spacing:.06em}
 .wrap{max-width:${maxW}px;margin:0 auto}
+.card-version{position:absolute;right:9px;bottom:5px;color:var(--sf-sub);opacity:.62;font-size:10px;line-height:1;font-weight:400;letter-spacing:.01em;pointer-events:none;user-select:none}
 
 .history-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .history-toolbar button{font:inherit;min-height:36px;padding:7px 10px;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
@@ -919,6 +920,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     <div class="quarter-row"><ha-icon icon="mdi:gauge"></ha-icon><div class="quarter-desc"><div class="quarter-name">Max. 15-Min.-Netzbezug</div><div class="quarter-time">Im Datumsmodus verfügbar</div></div><div class="quarter-value">–</div></div>
   </div>
   </div>
+  <div class="card-version" aria-label="Smartify Flow Card Version ${SFC_VERSION}">v${SFC_VERSION}</div>
 </ha-card>`;
     const r = this.shadowRoot;
     this._flowEl = r.querySelector('.flow');
