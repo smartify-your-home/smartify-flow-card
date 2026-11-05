@@ -1,5 +1,7 @@
 ## v0.6.22 – Verbraucher mit später beginnenden Jahresstatistiken (2026-11-05)
 
+- Schriftgrößen innerhalb der aufgeklappten Historie erhöht (Monatsnamen/kW und Zeitstempel), mit Umbruch auf Smartphone-Displays.
+
 - Einheitliche Schriftgrößen der Statistikzeilen: Titel 0,70 em, Zusatztext 0,76 em, Wert 1,15 em. Eingerückte **„Historie“** gut lesbar mit 0,83 em; unverkleinerte Werte auf Smartphones.\n
 - Statistikbereich vertikal komprimiert: weniger Abstand nach Gesamtenergiebedarf, Trennlinie und 15-Minuten-Bereich/„Historie“ rücken nach oben; weiterhin responsive auf Smartphones.\n
 - Verbraucher erscheinen auch bei erst im Juli (oder während eines beliebigen ausgewählten Zeitraums) beginnender Statistik mit tatsächlich messbarem Teilzeitraum; erstmals vorhandenen Tages-/Stunden-Summenwert als Baseline statt künstlicher Null nutzen.
