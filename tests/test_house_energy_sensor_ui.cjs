@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.join(__dirname,'..');
+const js=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/frontend/smartify-flow-card.js'),'utf8');
+const py=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/sensor.py'),'utf8');
+const integration=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/__init__.py'),'utf8');
+assert.match(js,/class="house-energy-row"/,'total energy row appears after share stats');
+assert.match(js,/houseEnergy:balance\?\.total\?\?null/,'history house total from existing validated energy balance');
+assert.match(js,/houseEnergy: sfcHistoricalBalance\(this\._pvToday\(\)/,'live day total uses same validated balance');
+assert.match(js,/m\.houseEnergy==null\?'–'/,'missing data are not shown as zero');
+assert.match(js,/this\._historyPreset==='year'\?'Aktuelles Jahr'/,'year label');
+assert.match(js,/this\._historyRange\?\.start/,'arbitrary range label');
+assert.match(py,/class SmartifyMonthlyPeakSensor\(SensorEntity\)/,'native HA sensor');
+assert.match(py,/def extra_state_attributes/,'year-list attributes');
+assert.match(py,/def current_year_months/,'archive bounded to current year');
+assert.match(integration,/async_forward_entry_setups\(entry, \["sensor"\]\)/,'platform loaded');
+console.log('Sensor and selected-period household energy UI checks passed');
