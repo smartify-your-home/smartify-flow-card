@@ -1,5 +1,6 @@
 ## Historische Verbraucher mit Teiljahresdaten (ab v0.6.22)
 
+Die Statistikbox verwendet kompaktere vertikale Abstände: Unter „Gesamtenergiebedarf“ rückt die Trennlinie sichtbar nach oben; die 15-Minuten-Spitze und „Historie“ folgen dichter. Die Spaltenaufteilung bleibt erhalten, auch auf Smartphone-Displays.\n\n
 Verbraucher mit Energie-Gesamtzählern, deren Recorder-Statistiken erst im laufenden Jahr oder einem anderen gewählten Zeitraum beginnen, werden **nicht mehr ausgeblendet**, wenn der Zeitraum-Anfang fehlt. Die Karte sucht bei fehlender Startgrenze gezielt den ersten vorhandenen Tages- und Stundenstatistikwert **innerhalb des ausgewählten Zeitraums**, nutzt diesen tatsächlich gemessenen kumulativen Wert als Baseline und zeigt den nachfolgenden Energieverbrauch an. In der Verbraucherkachel erscheint **„Teilzeitraum · Daten ab …“**. Es werden niemals fehlende Monate mit Null ergänzt oder der vollständige Zählerstand als Verbrauch genommen. Ohne gültige Anfangs- **oder** Endgrenze bleibt der Verbrauch weiterhin unbekannt.
 
 Die normale genaue Grenzwertberechnung für vollständige Zeiträume, die PV-Anlagen, Stromnetz-/Akku-Gesamtenergie und die gespeicherten Monatsmaxima bleiben unverändert. Recorder-Abfragen für die Nachsuche sind auf einen Tagesstatistik-Scan und ein kleines Stundenfenster je tatsächlich neu beginnendem Zähler begrenzt.
