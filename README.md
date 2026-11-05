@@ -1,3 +1,14 @@
+## Historische Verbraucher mit Teiljahresdaten (ab v0.6.22)
+
+Auch die **geöffneten Historieneinträge** – Monatsname, kW-Wert und Zeitpunkt – verwenden jetzt größere Schrift; Zeitstempel behalten einen leicht untergeordneten, aber gut lesbaren Schriftgrad. Der schmale Smartphone-Bildschirm bleibt berücksichtigt.
+
+
+Die Statistik-Schriftgrößen sind jetzt einheitlich: Überschriften 0,70 em, Zeiträume und Zusatztexte 0,76 em sowie Hauptwerte 1,15 em. Das eingerückte Ausklappmenü **„Historie“** bleibt bewusst gut lesbar (0,83 em). Auch auf schmalen Smartphones werden Hauptwerte nicht verkleinert; die Texte dürfen umbrechen.\n\n
+Die Statistikbox verwendet kompaktere vertikale Abstände: Unter „Gesamtenergiebedarf“ rückt die Trennlinie sichtbar nach oben; die 15-Minuten-Spitze und „Historie“ folgen dichter. Die Spaltenaufteilung bleibt erhalten, auch auf Smartphone-Displays.\n\n
+Verbraucher mit Energie-Gesamtzählern, deren Recorder-Statistiken erst im laufenden Jahr oder einem anderen gewählten Zeitraum beginnen, werden **nicht mehr ausgeblendet**, wenn der Zeitraum-Anfang fehlt. Die Karte sucht bei fehlender Startgrenze gezielt den ersten vorhandenen Tages- und Stundenstatistikwert **innerhalb des ausgewählten Zeitraums**, nutzt diesen tatsächlich gemessenen kumulativen Wert als Baseline und zeigt den nachfolgenden Energieverbrauch an. In der Verbraucherkachel erscheint **„Teilzeitraum · Daten ab …“**. Es werden niemals fehlende Monate mit Null ergänzt oder der vollständige Zählerstand als Verbrauch genommen. Ohne gültige Anfangs- **oder** Endgrenze bleibt der Verbrauch weiterhin unbekannt.
+
+Die normale genaue Grenzwertberechnung für vollständige Zeiträume, die PV-Anlagen, Stromnetz-/Akku-Gesamtenergie und die gespeicherten Monatsmaxima bleiben unverändert. Recorder-Abfragen für die Nachsuche sind auf einen Tagesstatistik-Scan und ein kleines Stundenfenster je tatsächlich neu beginnendem Zähler begrenzt.
+
 ## Kompakte 15-Minuten-Historie auf Smartphones (ab v0.6.21)
 
 Die aufklappbare Vormonatsliste unter dem maximalen 15-Minuten-Netzbezug heißt jetzt **„Historie“**. Der Aufklapper ist eingerückt und ohne Trennlinie direkt mit dem Monatsmaximum verbunden. Auf schmalen Displays dürfen Überschrift und Zeitpunkt umbrechen; der kW-Wert bleibt sichtbar und die Monatszeilen passen sich der Bildschirmbreite an. Datenspeicherung, Gesamtenergiebedarf und Berechnungen bleiben unverändert.
@@ -22,7 +33,7 @@ Beim Wechsel der Zeitfilter wird die SVG-Geometrie nach Wiederanzeige des Flow-C
 
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.21 · Karte v0.6.21**
+**Integration v0.6.22 · Karte v0.6.22**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -105,7 +116,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.21`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.22`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -127,7 +138,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.21
+/smartify_flow_card/smartify-flow-card.js?v=0.6.22
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -144,7 +155,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.21
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.22
       type: module
 ```
 
@@ -186,7 +197,7 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.21`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.22`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 

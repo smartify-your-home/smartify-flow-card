@@ -21,7 +21,7 @@ assert.equal(p.energy(plants,id=>id==='sensor.dach_kwh'?10000:null),null,'missin
 assert.equal(p.energy([{energy_total:'same'},{energy_total:'same'}],()=>5),5,'duplicate sensor not counted twice');
 assert.match(src,/this\._pvPlants\(\)\.reduce\(\(sum,p\)=>sum\+Math\.max\(this\._num\(p\.power\),0\),0\)/,'live watts sum all plants');
 assert.match(src,/sfcPvEnergy\(this\._pvPlants\(\),get\)/,'history sums individual statistics');
-assert.match(src,/firstDay>=range\.to/,'plant added after selected period does not block historical sum');
+assert.match(src,/\.filter\(t=>t>=range\.from&&t<range\.to\)/,'statistic recovery stays within selected period');
 assert.match(src,/this\._pvPlantControls\(sec\)/,'editor provides per-plant controls');
 assert.match(src,/this\._picker\(item,'Gesamtenergiezähler \(kWh\)'/,'separate entity picker for each PV plant');
 console.log('Named PV plants, summed power and independent energy regression checks passed');

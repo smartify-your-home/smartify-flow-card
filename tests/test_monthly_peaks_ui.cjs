@@ -20,4 +20,6 @@ assert.match(src,/\.monthly-history\{grid-column:1\/-1;border-top:0;margin:-5px 
 assert.match(src,/@media\(max-width:420px\)/,'narrow smartphone layout present');
 assert.match(src,/\.quarter-desc\{flex-basis:calc\(100% - 48px\)\}/,'peak title can wrap on phones');
 assert.match(src,/\.monthly-entry\{grid-template-columns:minmax\(0,1fr\) auto/,'month values stay in bounded grid');
+assert.match(src,/\.monthly-history-list\{[^}]*font-size:1\.15em/,'expanded history list uses larger font');
+assert.match(src,/\.monthly-entry small\{[^}]*font-size:\.9em/,'expanded history timestamps remain comfortably readable');
 console.log('Monthly peak UI, persistent data and version footer regressions passed');

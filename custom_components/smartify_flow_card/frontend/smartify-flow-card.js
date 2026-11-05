@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.21';
+const SFC_VERSION = '0.6.22';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -198,7 +198,8 @@ function sfcVerifiedBoundaryEnergy(startHourly,endHourly,endFine,from,to) {
     }
   }
   if(lastValue==null||lastTime<=measuredFrom||lastValue<initial-0.001)return null;
-  return {kwh:Math.max(0,lastValue-initial),partialStart:!exactStart,through:lastTime};
+  return {kwh:Math.max(0,lastValue-initial),partialStart:!exactStart,
+    partialFrom:!exactStart?measuredFrom:null,through:lastTime};
 }
 function sfcPvPlants(solar) {
   if(Array.isArray(solar?.plants))return solar.plants.filter(p=>p&&(p.power||p.energy_total));
@@ -495,35 +496,65 @@ class SmartifyFlowCard extends HTMLElement {
           ?this._getStatistics(ids,range.to-3600000,range.to,'5minute',{energy:'kWh'}).catch(()=>({}))
           :Promise.resolve({})
       ]);
-      const energy={},partialIds=[],lastTimes=[];
+      const energy={},partialIds=[],partialFrom={},lastTimes=[];
       const pvIds=new Set(this._pvPlants().map(p=>p.energy_total).filter(Boolean));
+      const missingStart=[];
       for(const id of ids){
-        // Requested units are already kWh; don't scale them a second time.
+        // Recorder was explicitly requested in kWh. Only verified boundaries
+        // count; a sensor's current cumulative state is never its energy use.
         const first=sfcHistoryPoints(head[id],'kWh');
         const last=sfcHistoryPoints(tail[id],'kWh');
         const fine=sfcHistoryPoints(fineTail[id],'kWh');
-        let value=sfcVerifiedBoundaryEnergy(first,last,fine,range.from,range.to);
-        // Only for a genuinely newly installed plant, find the earliest
-        // recorded day. Its first hourly sum is a partial baseline.
-        if(!value&&pvIds.has(id)&&!first.size){
-          const daily=await this._getStatistics([id],range.from,Date.now(),'day',{energy:'kWh'});
-          const days=sfcHistoryPoints(daily[id],'kWh');
-          const firstDay=[...days.keys()].filter(t=>t>=range.from&&t<range.to).sort((a,b)=>a-b)[0];
-          if(firstDay!=null&&firstDay>=range.to){
-            energy[id]=0;
-            continue;
+        const value=sfcVerifiedBoundaryEnergy(first,last,fine,range.from,range.to);
+        if(value){
+          energy[id]=value.kwh;
+          if(value.partialStart){
+            partialIds.push(id);
+            partialFrom[id]=value.partialFrom;
           }
-          if(firstDay!=null){
-            const opening=await this._getStatistics([id],firstDay,firstDay+86400000,'hour',{energy:'kWh'});
-            const openingPts=sfcHistoryPoints(opening[id],'kWh');
-            const firstHour=[...openingPts.keys()].filter(t=>t>=range.from&&t<range.to).sort((a,b)=>a-b)[0];
-            if(firstHour!=null)value=sfcVerifiedBoundaryEnergy(openingPts,last,fine,firstHour,range.to);
-            if(value)value.partialStart=true;
-          }
+          if(value.through)lastTimes.push(value.through);
+        }else{
+          energy[id]=null;
+          // Use the same guarded late-statistic fallback for consumers and PV
+          // plants, not for the grid/battery counters that define the balance.
+          if(pvIds.has(id)||this._consumerEntities().some(entity=>this._energyId(entity)===id))
+            missingStart.push(id);
         }
-        energy[id]=value?.kwh??null;
-        if(value?.partialStart)partialIds.push(id);
-        if(value?.through)lastTimes.push(value.through);
+      }
+      if(missingStart.length){
+        // One batched daily lookup to locate true first recorded days. Don't
+        // download every hourly statistic for the entire selected year.
+        const days=await this._getStatistics(missingStart,range.from,range.to,'day',{energy:'kWh'});
+        const discovered=missingStart.map(id=>{
+          const candidates=[...sfcHistoryPoints(days[id],'kWh').keys()]
+            .filter(t=>t>=range.from&&t<range.to).sort((a,b)=>a-b);
+          return {id,day:candidates[0]??null};
+        }).filter(x=>x.day!=null);
+        const recovered=await Promise.all(discovered.map(async ({id,day})=>{
+          try{
+            const opening=await this._getStatistics([id],day,Math.min(day+86400000,range.to),'hour',{energy:'kWh'});
+            const firstHour=[...sfcHistoryPoints(opening[id],'kWh').keys()]
+              .filter(t=>t>=range.from&&t<range.to).sort((a,b)=>a-b)[0];
+            if(firstHour==null)return null;
+            const openingPts=sfcHistoryPoints(opening[id],'kWh');
+            const last=sfcHistoryPoints(tail[id],'kWh');
+            const fine=sfcHistoryPoints(fineTail[id],'kWh');
+            const value=sfcVerifiedBoundaryEnergy(openingPts,last,fine,firstHour,range.to);
+            if(!value)return null;
+            // The first recorded bucket is an actual cumulative baseline,
+            // never the fictitious zero at the beginning of the year.
+            value.partialStart=true;
+            value.partialFrom=firstHour+3600000;
+            return {id,value};
+          }catch(_){return null;}
+        }));
+        for(const item of recovered){
+          if(!item)continue;
+          energy[item.id]=item.value.kwh;
+          partialIds.push(item.id);
+          partialFrom[item.id]=item.value.partialFrom;
+          if(item.value.through)lastTimes.push(item.value.through);
+        }
       }
       const peakId=this._c.grid.import_total;
       let peak=null;
@@ -542,7 +573,7 @@ class SmartifyFlowCard extends HTMLElement {
         }catch(_){peak=null;}
       }
       if(seq!==this._historySeq||this._historyMode!=='history')return;
-      this._historyData={energy,peak,partialIds,lastTimes};
+      this._historyData={energy,peak,partialIds,partialFrom,lastTimes};
       this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),data:this._historyData});
       while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
     }catch(_){
@@ -566,7 +597,9 @@ class SmartifyFlowCard extends HTMLElement {
     for(const id of this._consumerEntities()){
       const kwh=get(this._energyId(id)),name=this._name(id);
       if(kwh==null){missing.push(id);continue;}
-      all.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000});
+      const partialTs=this._historyData.partialFrom?.[this._energyId(id)];
+      const partialNote=partialTs!=null?'Teilzeitraum · Daten ab '+new Date(partialTs).toLocaleDateString('de-AT'):null;
+      all.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000,historyNote:partialNote});
     }
     all.sort((x,y)=>y.energy-x.energy||String(x.key).localeCompare(String(y.key)));
     const measured=all.reduce((sum,n)=>sum+n.energy,0);
@@ -603,7 +636,7 @@ class SmartifyFlowCard extends HTMLElement {
       // An incomplete Recorder/source budget must be visible, rather than
       // silently showing a measured consumer with no energy-flow line.
       if(n.energy>0.001&&n.unassignedW>0.01)
-        n.historyNote='Quellenzuordnung unvollständig · '+(n.unassignedW/1000).toFixed(2)+' kWh offen';
+        n.historyNote=[n.historyNote,'Quellenzuordnung unvollständig · '+(n.unassignedW/1000).toFixed(2)+' kWh offen'].filter(Boolean).join(' · ');
     }
     const right=sfcSortLoadTiles(visible,c.rest_always_last&&c.layout!=='radial');
     const sources=[
@@ -820,19 +853,19 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .history-buttons{display:flex;gap:8px;justify-content:flex-end}
 .history-buttons button{padding:9px 14px;min-height:40px;font:inherit;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
 .history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff)}
-.house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
-.house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px;font-size:.83em}.house-energy-description small{color:var(--sf-sub);font-size:.83em}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.08em}
-.quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:12px;border-top:1px solid var(--divider-color);flex-wrap:wrap}
-.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1 1 160px;min-width:0}.quarter-name{font-weight:700;font-size:.8em;overflow-wrap:anywhere}
-.quarter-time{font-size:.7em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.1em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%;margin-left:auto}
-.monthly-history{grid-column:1/-1;border-top:0;margin:-5px 0 0 36px;padding:0;min-width:0;font-size:.79em;color:var(--sf-txt)}
+.house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 0 2px;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
+.house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.house-energy-description strong{font-size:.7em;font-weight:800}.house-energy-description small{color:var(--sf-sub);font-size:.76em}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.15em;font-weight:800}
+.quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:8px;border-top:1px solid var(--divider-color);flex-wrap:wrap}
+.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1 1 160px;min-width:0}.quarter-name{font-weight:800;font-size:.7em;overflow-wrap:anywhere}
+.quarter-time{font-size:.76em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.15em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%;margin-left:auto}
+.monthly-history{grid-column:1/-1;border-top:0;margin:-5px 0 0 36px;padding:0;min-width:0;font-size:.83em;color:var(--sf-txt)}
 .monthly-history[hidden]{display:none}
 .monthly-history summary{cursor:pointer;font-weight:650;user-select:none;padding:7px 0;min-height:28px;overflow-wrap:anywhere}
-.monthly-history-list{max-height:280px;max-width:100%;min-width:0;overflow:auto;margin-top:4px;border:1px solid var(--divider-color);border-radius:var(--sf-r);padding:6px 10px;background:var(--sf-bg)}
+.monthly-history-list{max-height:280px;max-width:100%;min-width:0;overflow:auto;margin-top:4px;border:1px solid var(--divider-color);border-radius:var(--sf-r);padding:6px 10px;background:var(--sf-bg);font-size:1.15em}
 .monthly-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:8px 2px;border-bottom:1px solid var(--divider-color)}
 .monthly-entry:last-child{border:0}
-.monthly-entry small{grid-column:1/-1;color:var(--sf-sub)}
-@media(max-width:420px){.quarter-row{gap:8px}.quarter-desc{flex-basis:calc(100% - 48px)}.quarter-value{margin-left:36px;font-size:1em}.monthly-history{margin-left:36px}.monthly-entry{grid-template-columns:minmax(0,1fr) auto;gap:2px 6px}.monthly-entry small{overflow-wrap:anywhere}}
+.monthly-entry small{grid-column:1/-1;color:var(--sf-sub);font-size:.9em;overflow-wrap:anywhere}
+@media(max-width:420px){.quarter-row{gap:8px}.quarter-desc{flex-basis:calc(100% - 48px)}.quarter-value{margin-left:36px;font-size:1.15em}.monthly-history{margin-left:36px}.monthly-entry{grid-template-columns:minmax(0,1fr) auto;gap:2px 6px}.monthly-entry small{overflow-wrap:anywhere}}
 
 .flow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(64px,.75fr) minmax(0,1fr);grid-template-rows:auto}
 .col{display:flex;flex-direction:column;justify-content:space-around;gap:var(--sf-gap);position:relative;z-index:1;grid-row:1;min-width:0}
@@ -898,7 +931,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .bar{height:6px;border-radius:var(--sf-r);background:var(--sf-track);border:var(--sf-pill-bd);margin-top:7px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:var(--c);transition:width .6s}
 .bar.hide{display:none}
-.stats{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;margin-top:20px;padding:16px;
+.stats{display:grid;grid-template-columns:auto 1fr;column-gap:22px;row-gap:8px;align-items:center;margin-top:20px;padding:16px;
   border-radius:var(--sf-r);border:var(--sf-bw) solid var(--sf-bc);background:var(--sf-bg)}
 .ring{position:relative;width:132px;height:132px}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
