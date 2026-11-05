@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.22';
+const SFC_VERSION = '0.6.23';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -854,17 +854,17 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .history-buttons button{padding:9px 14px;min-height:40px;font:inherit;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
 .history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff)}
 .house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 0 2px;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
-.house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.house-energy-description strong{font-size:.7em;font-weight:800}.house-energy-description small{color:var(--sf-sub);font-size:.76em}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.15em;font-weight:800}
+.house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.house-energy-description strong{overflow-wrap:anywhere}.house-energy-description small{overflow-wrap:anywhere}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap}
 .quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:8px;border-top:1px solid var(--divider-color);flex-wrap:wrap}
-.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1 1 160px;min-width:0}.quarter-name{font-weight:800;font-size:.7em;overflow-wrap:anywhere}
-.quarter-time{font-size:.76em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.15em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%;margin-left:auto}
-.monthly-history{grid-column:1/-1;border-top:0;margin:-5px 0 0 36px;padding:0;min-width:0;font-size:.83em;color:var(--sf-txt)}
+.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1 1 160px;min-width:0}.quarter-name{overflow-wrap:anywhere}
+.quarter-time{overflow-wrap:anywhere}.quarter-value{white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%;margin-left:auto}
+.monthly-history{grid-column:1/-1;border-top:0;margin:-5px 0 0 36px;padding:0;min-width:0;color:var(--sf-txt)}
 .monthly-history[hidden]{display:none}
-.monthly-history summary{cursor:pointer;font-weight:650;user-select:none;padding:7px 0;min-height:28px;overflow-wrap:anywhere}
-.monthly-history-list{max-height:280px;max-width:100%;min-width:0;overflow:auto;margin-top:4px;border:1px solid var(--divider-color);border-radius:var(--sf-r);padding:6px 10px;background:var(--sf-bg);font-size:1.15em}
+.monthly-history summary{cursor:pointer;user-select:none;padding:7px 0;min-height:28px;overflow-wrap:anywhere}
+.monthly-history-list{max-height:280px;max-width:100%;min-width:0;overflow:auto;margin-top:4px;border:1px solid var(--divider-color);border-radius:var(--sf-r);padding:6px 10px;background:var(--sf-bg)}
 .monthly-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:8px 2px;border-bottom:1px solid var(--divider-color)}
 .monthly-entry:last-child{border:0}
-.monthly-entry small{grid-column:1/-1;color:var(--sf-sub);font-size:.9em;overflow-wrap:anywhere}
+.monthly-entry small{grid-column:1/-1;overflow-wrap:anywhere}.monthly-entry strong{white-space:nowrap;font-variant-numeric:tabular-nums}
 @media(max-width:420px){.quarter-row{gap:8px}.quarter-desc{flex-basis:calc(100% - 48px)}.quarter-value{margin-left:36px;font-size:1.15em}.monthly-history{margin-left:36px}.monthly-entry{grid-template-columns:minmax(0,1fr) auto;gap:2px 6px}.monthly-entry small{overflow-wrap:anywhere}}
 
 .flow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(64px,.75fr) minmax(0,1fr);grid-template-rows:auto}
@@ -923,7 +923,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .bd{flex:0 1 auto;box-sizing:border-box;max-width:60%;margin-left:auto;font-family:inherit;font-size:.6em;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
   background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
 .bd:empty{display:none}
-.val .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
+.val .unit,.house-energy-value .unit,.quarter-value .unit,.monthly-entry strong .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
 .val{font-size:1.55em;font-weight:800;line-height:1.15;margin-top:4px;color:var(--sf-txt);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sub,.sub2{font-family:inherit;font-size:.76em;font-weight:400;color:var(--sf-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:block}
 
@@ -943,11 +943,16 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .ring .lb{font-size:.52em;font-weight:800;letter-spacing:.08em;color:var(--sf-sub);margin-top:2px}
 .rows{display:flex;flex-direction:column;gap:14px;min-width:0}
 .row{--c:#888;display:grid;grid-template-columns:1fr auto;column-gap:8px}
-.row .rt{font-size:.7em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sf-txt);display:flex;align-items:center;gap:6px}
+.row .rt{display:flex;align-items:center;gap:6px}
 .row .rt::before{content:'';width:10px;height:10px;background:var(--c);border:1px solid var(--sf-bc);flex:none}
-.row .rp{font-size:1.15em;font-weight:800;color:var(--sf-txt);text-align:right;grid-row:span 2;line-height:1}
+.row .rp{text-align:right;grid-row:span 2;line-height:1}
 .row .rp small{display:block;font-size:.48em;color:var(--sf-sub);font-weight:700;letter-spacing:.05em}
-.row .rs{font-size:.76em;color:var(--sf-sub)}
+/* Shared typography: all five statistics use the SAME hierarchy.
+   Do not assign independent font sizes inside the two added rows. */
+.row .rt,.house-energy-description strong,.quarter-name,.monthly-history summary,.monthly-entry .month-name{font-size:.7em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sf-txt)}
+.row .rs,.house-energy-description small,.quarter-time,.monthly-entry small{font-size:.76em;color:var(--sf-sub)}
+.row .rp,.house-energy-value,.quarter-value,.monthly-entry strong{font-size:1.15em;font-weight:800;color:var(--sf-txt)}
+
 .row .rs b{color:var(--sf-txt)}
 .row .bar{grid-column:1 / -1}
 @media (max-width:480px){.flow{grid-template-columns:minmax(0,1fr) minmax(36px,.4fr) minmax(0,1fr)}.val{font-size:1.2em}.stats{grid-template-columns:1fr}.ring{margin:0 auto}}
@@ -1282,7 +1287,17 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     const fmtDate=stamp=>new Date(stamp*1000).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const currentValue=root.querySelector('.quarter-value'),currentTime=root.querySelector('.quarter-time');
     if(!currentValue||!currentTime)return;
-    currentValue.textContent=current?.kw!=null?current.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
+    const currentNumber=current?.kw!=null?current.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}):null;
+    if(currentValue.dataset.value!==String(currentNumber)){
+      currentValue.dataset.value=String(currentNumber);
+      if(currentNumber==null)currentValue.textContent='–';
+      else{
+        const unit=document.createElement('span');
+        unit.className='unit';
+        unit.textContent='kW';
+        currentValue.replaceChildren(document.createTextNode(currentNumber+' '),unit);
+      }
+    }
     currentTime.textContent=current?.start!=null?fmtDate(current.start)+' – '+new Date((current.start+900)*1000).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):
       'Noch kein vollständiger gespeicherter 15-Minuten-Wert';
     if(currentTime&&partial(current,month))currentTime.textContent+=' · Daten erst ab '+fmtDate(current.first);
@@ -1294,9 +1309,9 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       const mk=year+'-'+String(m+1).padStart(2,'0');
       const sample=this._monthlyPeaks?.[mk];
       const label=new Date(year,m,1).toLocaleDateString('de-AT',{month:'long'});
-      const value=sample?.kw!=null?sample.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
+      const value=sample?.kw!=null?sample.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}):null;
       const time=sample?.start!=null?fmtDate(sample.start)+(partial(sample,m)?' · Teilzeitraum ab '+fmtDate(sample.first):''):'Keine vollständigen gespeicherten Werte';
-      rows.push('<div class="monthly-entry"><span>'+this._esc(label)+'</span><strong>'+this._esc(value)+'</strong><small>'+this._esc(time)+'</small></div>');
+      rows.push('<div class="monthly-entry"><span class="month-name">'+this._esc(label)+'</span><strong>'+(value==null?'–':this._esc(value)+' <span class="unit">kW</span>')+'</strong><small>'+this._esc(time)+'</small></div>');
     }
     history.innerHTML=rows.length?rows.join(''):'Noch keine abgeschlossenen Monate in diesem Jahr';
     root.querySelector('.monthly-history').hidden=!rows.length;
@@ -1351,7 +1366,19 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       hasExp ? exp.toFixed(2)+' kWh · eingespeist' : 'Einspeisezähler erforderlich',
       'DES PV-ERTRAGS');
     const house=r.querySelector('.house-energy-value');
-    if(house)house.textContent=m.houseEnergy==null?'–':m.houseEnergy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kWh';
+    if(house){
+      const number=m.houseEnergy==null?'–':m.houseEnergy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2});
+      if(house.dataset.value!==number){
+        house.dataset.value=number;
+        if(m.houseEnergy==null)house.textContent='–';
+        else{
+          const unit=document.createElement('span');
+          unit.className='unit';
+          unit.textContent='kWh';
+          house.replaceChildren(document.createTextNode(number+' '),unit);
+        }
+      }
+    }
     const period=r.querySelector('.house-energy-period');
     if(period)period.textContent=m.historical?(this._historyPreset==='day'?'Heute':this._historyPreset==='month'?'Aktueller Monat':this._historyPreset==='year'?'Aktuelles Jahr':(this._historyRange?.start||'')+' – '+(this._historyRange?.end||'')):'Heute';
     // The peak display always refers to the CURRENT MONTH, independently

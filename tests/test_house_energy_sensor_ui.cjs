@@ -17,12 +17,11 @@ assert.match(integration,/async_forward_entry_setups\(entry, \["sensor"\]\)/,'pl
 assert.match(js,/\.stats\{display:grid;grid-template-columns:auto 1fr;column-gap:22px;row-gap:8px;/,'statistics use compact vertical gaps');
 assert.match(js,/\.house-energy-row\{[^}]*padding:8px 0 2px;/,'energy row has short bottom padding');
 assert.match(js,/\.quarter-row\{[^}]*padding-top:8px;/,'15-minute peak follows the energy divider closely');
-assert.match(js,/\.quarter-name\{font-weight:800;font-size:\.7em/,'peak title follows existing statistic titles');
-assert.match(js,/\.house-energy-description strong\{font-size:\.7em;font-weight:800/,'energy title follows existing statistic titles');
-assert.match(js,/\.house-energy-value\{[^}]*font-size:1\.15em;font-weight:800/,'total energy value matches standard statistic value');
-assert.match(js,/\.quarter-value\{font-size:1\.15em;font-weight:800/,'quarter peak value matches standard statistic value');
-assert.match(js,/\.house-energy-description small\{[^}]*font-size:\.76em/,'energy secondary text matches standard');
-assert.match(js,/\.quarter-time\{font-size:\.76em/,'peak secondary text matches standard');
-assert.match(js,/\.monthly-history\{[^}]*font-size:\.83em/,'indented history remains larger and legible');
+// The three original rows AND both new rows share one CSS typography rule.
+assert.match(js,/\.row \.rt,\.house-energy-description strong,\.quarter-name,.monthly-history summary,.monthly-entry .month-name\{font-size:\.7em;font-weight:800;letter-spacing:\.06em;text-transform:uppercase/,'shared headings: same size, weight and uppercase styling');
+assert.match(js,/\.row \.rs,\.house-energy-description small,\.quarter-time,.monthly-entry small\{font-size:\.76em;color:/,'shared subtitles');
+assert.match(js,/\.row \.rp,\.house-energy-value,\.quarter-value,.monthly-entry strong\{font-size:1\.15em;font-weight:800/,'shared primary values');
 assert.match(js,/@media\(max-width:420px\)\{[\s\S]{0,250}\.quarter-value\{margin-left:36px;font-size:1\.15em/,'mobile value keeps same font size');
+assert.match(js,/\.val \.unit,\.house-energy-value \.unit,\.quarter-value \.unit,\.monthly-entry strong \.unit\{font-size:\.8em;font-weight:650;color:var\(--sf-txt\)\}/,'all statistic units share tile font rule');
+assert.match(js,/unit\.className='unit'/,'current values have separate unit span');
 console.log('Sensor and selected-period household energy UI checks passed');
