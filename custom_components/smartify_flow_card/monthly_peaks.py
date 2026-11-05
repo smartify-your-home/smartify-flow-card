@@ -54,7 +54,7 @@ class MonthlyPeaks:
         saved = await self.storage.async_load() or {}
         self.sensors = saved.get("sensors", {})
         self.unsub = async_track_time_interval(self.hass, self.tick, timedelta(minutes=5))
-        self.hass.async_create_task(self.refresh(), eager_start=False)
+        self.hass.async_create_task(self.refresh())
 
     async def stop(self):
         if self.unsub:
