@@ -1,3 +1,9 @@
+## Viertelstunden-Historie: Smartphone-UI ab v0.6.21 – verbindlich
+
+- Der Ausklapper unter „Max. 15-Min.-Netzbezug · aktueller Monat“ heißt **„Historie“**, ist dezent eingerückt und bleibt ohne Trennlinie direkt unter diesem Maximum. „Gesamtenergiebedarf“ ist davon optisch getrennt.
+- Bei schmalen Karten und Smartphones dürfen lange Titel/Zeitstempel umbrechen, während kW-Wert und Monatsarchiv vollständig sichtbar bleiben; keine horizontalen Überläufe, keine geänderte Daten- oder Berechnungslogik.
+- UI-Regressionstest für Beschriftung und mobile CSS-Anpassungen in Validate und Release ausführen.
+
 ## HA-Monatsmaximasensor und Gesamtenergiebedarf ab v0.6.20 – verbindlich
 
 - Persistente Monatsdaten weiterhin ausschließlich im Home-Assistant-Store halten. Je registriertem Netzbezugs-Gesamtenergiezähler einen echten Sensor mit aktuellem Monatsmaximum (kW) und maximal 12 aktuellen Jahresmonaten als Attribut `monatswerte` erzeugen; alte Jahre über WebSocket/Store weiterhin abrufbar. Bei neuen Zählern dynamisch Entitäten anlegen; bei Reload nicht doppelt erzeugen.
