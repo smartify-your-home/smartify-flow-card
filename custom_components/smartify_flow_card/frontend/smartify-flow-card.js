@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.17';
+const SFC_VERSION = '0.6.18';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -1434,6 +1434,9 @@ class SmartifyFlowCardEditor extends HTMLElement {
     this._pickers = [];
     this._openPicker = null;
     this._filters = {};
+    // Aufgeklappte Editor-Bereiche: nur pro Editor-Instanz gemerkt. HA erzeugt beim
+    // erneuten Öffnen von „Bearbeiten“ eine neue Instanz → alle Bereiche wieder zu.
+    this._openSections = new Set();
   }
   setConfig(config) {
     // Lovelace calls setConfig after each config-changed event. Do not tear down
@@ -1524,9 +1527,23 @@ class SmartifyFlowCardEditor extends HTMLElement {
   }
   _section(name, icon) {
     const section = document.createElement('section');
+    const open = this._openSections.has(name);
+    section.classList.toggle('collapsed', !open);
     const h = document.createElement('h3');
+    h.setAttribute('role', 'button');
+    h.tabIndex = 0;
+    h.setAttribute('aria-expanded', String(open));
     const ic = document.createElement('ha-icon'); ic.setAttribute('icon', icon);
-    h.append(ic, document.createTextNode(name)); section.append(h);
+    const title = document.createElement('span'); title.className = 'sec-title'; title.textContent = name;
+    const chev = document.createElement('ha-icon'); chev.className = 'sec-chevron'; chev.setAttribute('icon', 'mdi:chevron-down');
+    h.append(ic, title, chev); section.append(h);
+    const toggle = () => {
+      const nowOpen = section.classList.toggle('collapsed') === false;
+      h.setAttribute('aria-expanded', String(nowOpen));
+      if (nowOpen) this._openSections.add(name); else this._openSections.delete(name);
+    };
+    h.addEventListener('click', toggle);
+    h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     this._body.append(section);
     return section;
   }
@@ -2184,7 +2201,13 @@ class SmartifyFlowCardEditor extends HTMLElement {
       .intro{padding:12px 14px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);margin-bottom:12px;background:var(--secondary-background-color)}
       .intro b{display:block;margin-bottom:2px}.intro small{color:var(--secondary-text-color)}
       section{border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);padding:14px;margin:10px 0;background:var(--card-background-color)}
-      h3{display:flex;gap:9px;align-items:center;font-size:15px;margin:0 0 14px}h3 ha-icon{color:var(--primary-color)}
+      h3{display:flex;gap:9px;align-items:center;font-size:15px;margin:0 0 14px;cursor:pointer;user-select:none;outline:none}h3 ha-icon{color:var(--primary-color)}
+      h3 .sec-title{flex:1;min-width:0}
+      h3 .sec-chevron{color:var(--secondary-text-color);transition:transform .2s}
+      h3:focus-visible{outline:2px solid var(--primary-color);outline-offset:4px;border-radius:4px}
+      section.collapsed>h3{margin:0}
+      section.collapsed>h3 .sec-chevron{transform:rotate(-90deg)}
+      section.collapsed>:not(h3){display:none!important}
       .field{margin:0 0 12px;min-width:0}.field>label{display:block;font-size:12px;font-weight:650;margin-bottom:6px;color:var(--secondary-text-color)}
       .field>small{display:block;margin-top:4px;color:var(--secondary-text-color);font-size:11px}
       input:not([type=checkbox]){display:block;box-sizing:border-box;width:100%;min-height:43px;border:1px solid var(--divider-color);border-radius:var(--sf-editor-radius);background:var(--secondary-background-color);color:var(--primary-text-color);font:inherit;padding:9px 11px;outline:none}

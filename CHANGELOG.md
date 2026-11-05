@@ -1,3 +1,8 @@
+## v0.6.18 – Klappbare Editor-Bereiche (2026-11-05)
+
+- Alle Bereiche des visuellen Editors (Photovoltaik, Stromnetz, Batteriespeicher, Verbraucher, Darstellung & Animation, Sicherung …) sind per Klick auf die Überschrift auf-/zuklappbar (auch per Tastatur: Enter/Leertaste).
+- Beim erneuten Öffnen von „Bearbeiten“ sind alle Bereiche geschlossen. Innerhalb einer Bearbeitung bleibt der Zustand auch bei internen Neuaufbauten (z. B. Wechsel des Netz-Sensormodus) erhalten.
+
 ## v0.6.17 – Historische Filterwechsel / Linien (2026-11-04)
 
 - SVG-Verbindungen nach dem Umschalten Live → Monat → Tag in einem zusätzlichen Layoutframe nachmessen. Vorhandene DOM-Pfade und Animationen behalten.

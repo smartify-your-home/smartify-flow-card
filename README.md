@@ -4,7 +4,7 @@ Beim Wechsel der Zeitfilter wird die SVG-Geometrie nach Wiederanzeige des Flow-C
 
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.17 · Karte v0.6.17**
+**Integration v0.6.18 · Karte v0.6.18**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -87,7 +87,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.17`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.18`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -109,7 +109,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.17
+/smartify_flow_card/smartify-flow-card.js?v=0.6.18
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -126,7 +126,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.17
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.18
       type: module
 ```
 
@@ -168,11 +168,13 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.17`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.18`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 
 ## Fachliche Bedienhinweise
+
+- **Klappbare Editor-Bereiche (ab v0.6.18):** Im visuellen Editor lassen sich alle Bereiche über die Überschrift auf- und zuklappen. Beim Öffnen von „Bearbeiten“ sind sie immer geschlossen.
 
 - **Quellenanzeige (ab v0.6.12):** Standard `source_display: badge` – kompaktes Badge (z. B. `100% PV`, `Netz`, `60% PV`) rechts in der Zeile des Leistungswerts. Der farbige Prozent-Fußstreifen ist optional über `source_display: strip` bzw. im Editor unter **Darstellung & Animation** wählbar.
 
