@@ -1238,12 +1238,14 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     const now=new Date(),year=now.getFullYear(),month=now.getMonth();
     const key=year+'-'+String(month+1).padStart(2,'0');
     const current=this._monthlyPeaks?.[key];
+    const partial=(sample,m)=>sample?.first!=null&&sample.first>new Date(year,m,1).getTime()/1000+900;
     const fmtDate=stamp=>new Date(stamp*1000).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const currentValue=root.querySelector('.quarter-value'),currentTime=root.querySelector('.quarter-time');
     if(!currentValue||!currentTime)return;
     currentValue.textContent=current?.kw!=null?current.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
     currentTime.textContent=current?.start!=null?fmtDate(current.start)+' – '+new Date((current.start+900)*1000).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):
       'Noch kein vollständiger gespeicherter 15-Minuten-Wert';
+    if(currentTime&&partial(current,month))currentTime.textContent+=' · Daten erst ab '+fmtDate(current.first);
     const history=root.querySelector('.monthly-history-list');
     if(!history)return;
     // Jan through the last completed month, newest month first.
@@ -1253,7 +1255,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       const sample=this._monthlyPeaks?.[mk];
       const label=new Date(year,m,1).toLocaleDateString('de-AT',{month:'long'});
       const value=sample?.kw!=null?sample.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
-      const time=sample?.start!=null?fmtDate(sample.start):'Keine vollständigen gespeicherten Werte';
+      const time=sample?.start!=null?fmtDate(sample.start)+(partial(sample,m)?' · Teilzeitraum ab '+fmtDate(sample.first):''):'Keine vollständigen gespeicherten Werte';
       rows.push('<div class="monthly-entry"><span>'+this._esc(label)+'</span><strong>'+this._esc(value)+'</strong><small>'+this._esc(time)+'</small></div>');
     }
     history.innerHTML=rows.length?rows.join(''):'Noch keine abgeschlossenen Monate in diesem Jahr';
