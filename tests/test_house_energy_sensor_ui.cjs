@@ -18,8 +18,8 @@ assert.match(js,/\.stats\{display:grid;grid-template-columns:auto 1fr;column-gap
 assert.match(js,/\.house-energy-row\{[^}]*padding:8px 0 2px;/,'energy row has short bottom padding');
 assert.match(js,/\.quarter-row\{[^}]*padding-top:8px;/,'15-minute peak follows the energy divider closely');
 // The three original rows AND both new rows share one CSS typography rule.
-assert.match(js,/\.row \.rt,\.house-energy-description strong,\.quarter-name\{font-size:\.7em;font-weight:800;letter-spacing:\.06em;text-transform:uppercase/,'shared headings: same size, weight and uppercase styling');
-assert.match(js,/\.row \.rs,\.house-energy-description small,\.quarter-time\{font-size:\.76em;color:/,'shared subtitles');
-assert.match(js,/\.row \.rp,\.house-energy-value,\.quarter-value\{font-size:1\.15em;font-weight:800/,'shared primary values');
+assert.match(js,/\.row \.rt,\.house-energy-description strong,\.quarter-name,.monthly-history summary,.monthly-entry .month-name\{font-size:\.7em;font-weight:800;letter-spacing:\.06em;text-transform:uppercase/,'shared headings: same size, weight and uppercase styling');
+assert.match(js,/\.row \.rs,\.house-energy-description small,\.quarter-time,.monthly-entry small\{font-size:\.76em;color:/,'shared subtitles');
+assert.match(js,/\.row \.rp,\.house-energy-value,\.quarter-value,.monthly-entry strong\{font-size:1\.15em;font-weight:800/,'shared primary values');
 assert.match(js,/@media\(max-width:420px\)\{[\s\S]{0,250}\.quarter-value\{margin-left:36px;font-size:1\.15em/,'mobile value keeps same font size');
 console.log('Sensor and selected-period household energy UI checks passed');
