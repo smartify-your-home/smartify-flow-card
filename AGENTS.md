@@ -1,3 +1,11 @@
+## Dauerhafte Monatsmaxima und Kartenversionsanzeige ab v0.6.19 – verbindlich
+
+- Aus `grid.import_total` nur vollständige 15-Minuten-Intervalle aus Recorder-5-Minuten-Summen berechnen: 3 Differenzen, bei fehlenden/negativen Zählerwerten keinen Peak erzeugen. Kein Rückschluss aus Stunden-Langzeitdaten, kein interpolierter Peak.
+- Monatsmaxima separat je Import-Statistik-ID in Home Assistant Store persistieren; Poll alle 5 Minuten serverseitig nach initialer Registrierung via Card WebSocket, auch ohne geöffnete Card und über HA-Neustarts hinweg. Re-Load darf keine parallelen Poller erzeugen.
+- Der sichtbare Spitzenwert ist **immer der aktuelle Monat**, unabhängig vom ausgewählten Filter. Aufklappbare Liste Januar bis letzter abgeschlossener Monat; ältere fehlende Daten „–“, unvollständige erfasste Monate mit Teilzeitraumhinweis.
+- Kleiner Versionshinweis rechts unten aus `SFC_VERSION`, der mit Manifest, README und Release übereinstimmt.
+- Regressionen `tests/test_monthly_peaks.py` und `tests/test_monthly_peaks_ui.cjs` im Release und Validate ausführen.
+
 ## Historische Filterwechsel und SVG-Linien (Fix nach v0.6.16)
 - Abfolge Live → Monat → Tag muss bei positivem Quellenanteil dieselben Linien wie eine direkte Tagesauswahl anzeigen. Nach dem vorübergehenden Ausblenden des Flow-Containers eine zusätzliche Layout-Messung im nächsten Animationsframe ausführen, ohne bestehende Pfade/Animationen neu zu erzeugen.
 - Ein gemessener historischer Verbrauch ohne vollständig verfügbare Quellenzuordnung erhält einen eindeutigen Hinweis auf die offene kWh-Menge; keine künstliche Verbindung und keine erfundenen Quellenwerte.
