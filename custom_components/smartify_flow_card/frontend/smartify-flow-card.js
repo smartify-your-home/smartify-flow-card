@@ -952,6 +952,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .row .rt,.house-energy-description strong,.quarter-name,.monthly-history summary,.monthly-entry .month-name{font-size:.7em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sf-txt)}
 .row .rs,.house-energy-description small,.quarter-time,.monthly-entry small{font-size:.76em;color:var(--sf-sub)}
 .row .rp,.house-energy-value,.quarter-value,.monthly-entry strong{font-size:1.15em;font-weight:800;color:var(--sf-txt)}
+.house-energy-value .unit{font-size:.8em;font-weight:650}
 
 .row .rs b{color:var(--sf-txt)}
 .row .bar{grid-column:1 / -1}
@@ -1356,7 +1357,19 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       hasExp ? exp.toFixed(2)+' kWh · eingespeist' : 'Einspeisezähler erforderlich',
       'DES PV-ERTRAGS');
     const house=r.querySelector('.house-energy-value');
-    if(house)house.textContent=m.houseEnergy==null?'–':m.houseEnergy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kWh';
+    if(house){
+      const number=m.houseEnergy==null?'–':m.houseEnergy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2});
+      if(house.dataset.value!==number){
+        house.dataset.value=number;
+        if(m.houseEnergy==null)house.textContent='–';
+        else{
+          const unit=document.createElement('span');
+          unit.className='unit';
+          unit.textContent='kWh';
+          house.replaceChildren(document.createTextNode(number+' '),unit);
+        }
+      }
+    }
     const period=r.querySelector('.house-energy-period');
     if(period)period.textContent=m.historical?(this._historyPreset==='day'?'Heute':this._historyPreset==='month'?'Aktueller Monat':this._historyPreset==='year'?'Aktuelles Jahr':(this._historyRange?.start||'')+' – '+(this._historyRange?.end||'')):'Heute';
     // The peak display always refers to the CURRENT MONTH, independently
