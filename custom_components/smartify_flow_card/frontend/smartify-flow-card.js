@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.20';
+const SFC_VERSION = '0.6.21';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -822,17 +822,17 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff)}
 .house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
 .house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px;font-size:.83em}.house-energy-description small{color:var(--sf-sub);font-size:.83em}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.08em}
-.quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:12px;border-top:1px solid var(--divider-color)}
-.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1;min-width:0}.quarter-name{font-weight:700;font-size:.8em}
-.quarter-time{font-size:.7em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.1em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
-.monthly-history{grid-column:1/-1;border-top:1px solid var(--divider-color);padding-top:8px;font-size:.79em;color:var(--sf-txt)}
+.quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:12px;border-top:1px solid var(--divider-color);flex-wrap:wrap}
+.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1 1 160px;min-width:0}.quarter-name{font-weight:700;font-size:.8em;overflow-wrap:anywhere}
+.quarter-time{font-size:.7em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.1em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%;margin-left:auto}
+.monthly-history{grid-column:1/-1;border-top:0;margin:-5px 0 0 36px;padding:0;min-width:0;font-size:.79em;color:var(--sf-txt)}
 .monthly-history[hidden]{display:none}
-.monthly-history summary{cursor:pointer;font-weight:650;user-select:none;padding:6px 0}
-.monthly-history-list{max-height:280px;overflow:auto;margin-top:7px;border:1px solid var(--divider-color);border-radius:var(--sf-r);padding:6px 10px;background:var(--sf-bg)}
-.monthly-entry{display:grid;grid-template-columns:1fr auto;gap:3px 10px;padding:8px 2px;border-bottom:1px solid var(--divider-color)}
+.monthly-history summary{cursor:pointer;font-weight:650;user-select:none;padding:7px 0;min-height:28px;overflow-wrap:anywhere}
+.monthly-history-list{max-height:280px;max-width:100%;min-width:0;overflow:auto;margin-top:4px;border:1px solid var(--divider-color);border-radius:var(--sf-r);padding:6px 10px;background:var(--sf-bg)}
+.monthly-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:8px 2px;border-bottom:1px solid var(--divider-color)}
 .monthly-entry:last-child{border:0}
 .monthly-entry small{grid-column:1/-1;color:var(--sf-sub)}
-@media(max-width:360px){.quarter-row{flex-wrap:wrap}.quarter-value{margin-left:auto}}
+@media(max-width:420px){.quarter-row{gap:8px}.quarter-desc{flex-basis:calc(100% - 48px)}.quarter-value{margin-left:36px;font-size:1em}.monthly-history{margin-left:36px}.monthly-entry{grid-template-columns:minmax(0,1fr) auto;gap:2px 6px}.monthly-entry small{overflow-wrap:anywhere}}
 
 .flow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(64px,.75fr) minmax(0,1fr);grid-template-rows:auto}
 .col{display:flex;flex-direction:column;justify-content:space-around;gap:var(--sf-gap);position:relative;z-index:1;grid-row:1;min-width:0}
@@ -937,7 +937,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     </div>
     <div class="house-energy-row"><ha-icon icon="mdi:home-lightning-bolt-outline"></ha-icon><div class="house-energy-description"><strong>Gesamtenergiebedarf</strong><small class="house-energy-period">Heute</small></div><strong class="house-energy-value">–</strong></div>
     <div class="quarter-row"><ha-icon icon="mdi:gauge"></ha-icon><div class="quarter-desc"><div class="quarter-name">Max. 15-Min.-Netzbezug · aktueller Monat</div><div class="quarter-time">Lade Monatsmaximum …</div></div><div class="quarter-value">–</div></div>
-    <details class="monthly-history"><summary>Vormonate anzeigen</summary><div class="monthly-history-list"></div></details>
+    <details class="monthly-history"><summary>Historie</summary><div class="monthly-history-list"></div></details>
   </div>
   </div>
   <div class="card-version" aria-label="Smartify Flow Card Version ${SFC_VERSION}">v${SFC_VERSION}</div>
