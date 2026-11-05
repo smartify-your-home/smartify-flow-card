@@ -1,3 +1,9 @@
+## Verbraucher mit später beginnenden historischen Statistiken ab v0.6.22 – verbindlich
+
+- Bei fehlender Start-Statistik auch für **Verbraucher** die erste echte Tagesstatistik im ausgewählten Zeitraum lokalisieren, danach aus kleinem Stundenfenster den ersten gültigen kumulativen Stundenwert als Baseline verwenden. Tagesstatistiken mehrerer fehlender Zähler nach Möglichkeit in **einem** gebündelten Aufruf abrufen; weder Null-Baseline noch kompletten Jahres-Stundenexport verwenden.
+- Den resultierenden Wert als **Teilzeitraum** und mit realem Beginn in der jeweiligen Verbraucherkachel anzeigen. Gerät ohne belastbare Baseline/Ende weiter auslassen, keinen vermeintlich vollständigen Jahresverbrauch anzeigen. Die verifizierte Berechnung vollständiger Zeiträume bleibt vorrangig und unverändert.
+- Quelle-Warnung und Teilzeitraumhinweis müssen gleichzeitig möglich bleiben. Regression tests/test_partial_consumer_history.cjs in Validate und Release ausführen.
+
 ## Viertelstunden-Historie: Smartphone-UI ab v0.6.21 – verbindlich
 
 - Der Ausklapper unter „Max. 15-Min.-Netzbezug · aktueller Monat“ heißt **„Historie“**, ist dezent eingerückt und bleibt ohne Trennlinie direkt unter diesem Maximum. „Gesamtenergiebedarf“ ist davon optisch getrennt.
