@@ -14,4 +14,7 @@ assert.match(py,/class SmartifyMonthlyPeakSensor\(SensorEntity\)/,'native HA sen
 assert.match(py,/def extra_state_attributes/,'year-list attributes');
 assert.match(py,/def current_year_months/,'archive bounded to current year');
 assert.match(integration,/async_forward_entry_setups\(entry, \["sensor"\]\)/,'platform loaded');
+assert.match(js,/\.stats\{display:grid;grid-template-columns:auto 1fr;column-gap:22px;row-gap:8px;/,'statistics use compact vertical gaps');
+assert.match(js,/\.house-energy-row\{[^}]*padding:8px 0 2px;/,'energy row has short bottom padding');
+assert.match(js,/\.quarter-row\{[^}]*padding-top:8px;/,'15-minute peak follows the energy divider closely');
 console.log('Sensor and selected-period household energy UI checks passed');
