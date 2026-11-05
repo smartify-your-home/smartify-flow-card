@@ -1,3 +1,10 @@
+## v0.6.22 – Verbraucher mit später beginnenden Jahresstatistiken (2026-11-05)
+
+- Verbraucher erscheinen auch bei erst im Juli (oder während eines beliebigen ausgewählten Zeitraums) beginnender Statistik mit tatsächlich messbarem Teilzeitraum; erstmals vorhandenen Tages-/Stunden-Summenwert als Baseline statt künstlicher Null nutzen.
+- In jeder betroffenen Verbraucherkachel den Hinweis **„Teilzeitraum · Daten ab …“** anzeigen; Warnung über unvollständige Quellenzuordnung bleibt bei Bedarf zusätzlich erhalten.
+- Gemeinsame, begrenzte Nachsuche für Verbraucher und PV-Anlagen; fehlende/statistisch ungültige Werte weiterhin unbekannt. Bestehende Netz-, Akku-, Gesamtenergie- und 15-Minuten-Spitzenlogik bleibt unberührt.
+- Regressionstest mit im Juli beginnender Waschmaschine, tatsächlicher Zählerstand-Differenz und fehlendem Vergleichssensor; alle vorhandenen Tests weiterführen.
+
 ## v0.6.21 – Kompakte 15-Minuten-Historie und Smartphone-Layout (2026-11-05)
 
 - Aufklappmenü unter dem Monatsmaximum in **„Historie“** umbenannt und ohne separate Trennlinie unmittelbar dem 15-Minuten-Wert zugeordnet.
