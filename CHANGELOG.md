@@ -1,5 +1,6 @@
 ## v0.6.22 – Verbraucher mit später beginnenden Jahresstatistiken (2026-11-05)
 
+- Statistikbereich vertikal komprimiert: weniger Abstand nach Gesamtenergiebedarf, Trennlinie und 15-Minuten-Bereich/„Historie“ rücken nach oben; weiterhin responsive auf Smartphones.\n
 - Verbraucher erscheinen auch bei erst im Juli (oder während eines beliebigen ausgewählten Zeitraums) beginnender Statistik mit tatsächlich messbarem Teilzeitraum; erstmals vorhandenen Tages-/Stunden-Summenwert als Baseline statt künstlicher Null nutzen.
 - In jeder betroffenen Verbraucherkachel den Hinweis **„Teilzeitraum · Daten ab …“** anzeigen; Warnung über unvollständige Quellenzuordnung bleibt bei Bedarf zusätzlich erhalten.
 - Gemeinsame, begrenzte Nachsuche für Verbraucher und PV-Anlagen; fehlende/statistisch ungültige Werte weiterhin unbekannt. Bestehende Netz-, Akku-, Gesamtenergie- und 15-Minuten-Spitzenlogik bleibt unberührt.
