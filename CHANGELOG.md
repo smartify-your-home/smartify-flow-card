@@ -1,3 +1,10 @@
+## v0.6.21 – Kompakte 15-Minuten-Historie und Smartphone-Layout (2026-11-05)
+
+- Aufklappmenü unter dem Monatsmaximum in **„Historie“** umbenannt und ohne separate Trennlinie unmittelbar dem 15-Minuten-Wert zugeordnet.
+- Mobile Layouts bis 420 px: Zeitstempel und Überschrift dürfen umbrechen; kW-Wert und Monatsliste bleiben sichtbar, ohne waagerecht aus dem Kartenrand zu rutschen.
+- Keine Änderungen an Messlogik, gespeicherten Monatswerten, HA-Sensor oder Gesamtenergiebedarf.
+- UI-Regressionstests ergänzt.
+
 ## v0.6.20 – HA-Sensor für Monatsmaxima und Gesamtenergiebedarf (2026-11-05)
 
 - Home-Assistant-Sensorplattform für registrierte Netzbezugs-Gesamtenergiezähler; aktuelles 15-Minuten-Monatsmaximum als kW-Sensor und aktuelles Kalenderjahr als kompakte `monatswerte`-Attribute inklusive Zeitstempeln.
