@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.18';
+const SFC_VERSION = '0.6.19';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -260,6 +260,10 @@ class SmartifyFlowCard extends HTMLElement {
     this._todayPeakTs=this._todayPeakTs||0;
     this._historyCache=this._historyCache||new Map();
     this._historySeq=this._historySeq||0;
+    this._monthlyPeaks=this._monthlyPeaks||{};
+    this._monthlyPeaksSensor=null;
+    this._monthlyPeaksFetchAt=0;
+    this._monthlyPeaksLoading=false;
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
     this._build();
   }
@@ -269,6 +273,7 @@ class SmartifyFlowCard extends HTMLElement {
     if (!this._raf) this._raf = requestAnimationFrame(() => { this._raf = null; this._update(); });
     if(this._historyMode==='live')this._maybeEnergy();
     if(this._historyMode==='live')this._maybeLivePeak();
+    this._maybeMonthlyPeaks();
   }
 
   getCardSize() { return 8; }
@@ -792,9 +797,10 @@ class SmartifyFlowCard extends HTMLElement {
   --sf-accent-h:var(--smartify-flow-accent-height,4px);
   --sf-gap:var(--smartify-flow-gap,14px);
 }
-ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padding:16px;overflow:hidden;font-size:${scale}em;background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) ${100 - transparency}%, transparent);}
+ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padding:16px 16px 27px;overflow:hidden;font-size:${scale}em;background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) ${100 - transparency}%, transparent);}
 .title{font-weight:800;font-size:1.05em;margin:0 0 12px 2px;color:var(--sf-txt);text-transform:uppercase;letter-spacing:.06em}
 .wrap{max-width:${maxW}px;margin:0 auto}
+.card-version{position:absolute;right:9px;bottom:5px;color:var(--sf-sub);opacity:.62;font-size:10px;line-height:1;font-weight:400;letter-spacing:.01em;pointer-events:none;user-select:none}
 
 .history-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .history-toolbar button{font:inherit;min-height:36px;padding:7px 10px;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
@@ -813,6 +819,13 @@ ha-card{font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padd
 .quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:12px;border-top:1px solid var(--divider-color)}
 .quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1;min-width:0}.quarter-name{font-weight:700;font-size:.8em}
 .quarter-time{font-size:.7em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.1em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.monthly-history{grid-column:1/-1;border-top:1px solid var(--divider-color);padding-top:8px;font-size:.79em;color:var(--sf-txt)}
+.monthly-history[hidden]{display:none}
+.monthly-history summary{cursor:pointer;font-weight:650;user-select:none;padding:6px 0}
+.monthly-history-list{max-height:280px;overflow:auto;margin-top:7px;border:1px solid var(--divider-color);border-radius:var(--sf-r);padding:6px 10px;background:var(--sf-bg)}
+.monthly-entry{display:grid;grid-template-columns:1fr auto;gap:3px 10px;padding:8px 2px;border-bottom:1px solid var(--divider-color)}
+.monthly-entry:last-child{border:0}
+.monthly-entry small{grid-column:1/-1;color:var(--sf-sub)}
 @media(max-width:360px){.quarter-row{flex-wrap:wrap}.quarter-value{margin-left:auto}}
 
 .flow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(64px,.75fr) minmax(0,1fr);grid-template-rows:auto}
@@ -916,9 +929,11 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       <div class="row" style="--c:${SFC_COL.grid}"><div class="rt">Netzbezug</div><div class="rp r2p">–</div><div class="rs r2s"></div><div class="bar"><i class="r2b"></i></div></div>
       <div class="row" style="--c:${SFC_COL.export}"><div class="rt">Einspeisung</div><div class="rp r3p">–</div><div class="rs r3s"></div><div class="bar"><i class="r3b"></i></div></div>
     </div>
-    <div class="quarter-row"><ha-icon icon="mdi:gauge"></ha-icon><div class="quarter-desc"><div class="quarter-name">Max. 15-Min.-Netzbezug</div><div class="quarter-time">Im Datumsmodus verfügbar</div></div><div class="quarter-value">–</div></div>
+    <div class="quarter-row"><ha-icon icon="mdi:gauge"></ha-icon><div class="quarter-desc"><div class="quarter-name">Max. 15-Min.-Netzbezug · aktueller Monat</div><div class="quarter-time">Lade Monatsmaximum …</div></div><div class="quarter-value">–</div></div>
+    <details class="monthly-history"><summary>Vormonate anzeigen</summary><div class="monthly-history-list"></div></details>
   </div>
   </div>
+  <div class="card-version" aria-label="Smartify Flow Card Version ${SFC_VERSION}">v${SFC_VERSION}</div>
 </ha-card>`;
     const r = this.shadowRoot;
     this._flowEl = r.querySelector('.flow');
@@ -1199,6 +1214,54 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     this._scheduleDraw();
   }
 
+  async _maybeMonthlyPeaks() {
+    const id=this._c?.grid?.import_total;
+    if(!id||!this._h?.callWS||this._monthlyPeaksLoading)return;
+    if(this._monthlyPeaksSensor===id&&Date.now()<this._monthlyPeaksFetchAt)return;
+    this._monthlyPeaksLoading=true;
+    this._monthlyPeaksFetchAt=Date.now()+60000;
+    try{
+      const result=await this._h.callWS({type:'smartify_flow_card/monthly_peaks',statistic_id:id});
+      if(this._c?.grid?.import_total!==id)return;
+      this._monthlyPeaks=result?.months||{};
+      this._monthlyPeaksSensor=id;
+      if(this._m)this._updateMonthlyPeaks();
+    }catch(err){
+      // Older integrations continue to render their existing historical UI.
+      this._monthlyPeaksFetchAt=Date.now()+60000;
+    }finally{this._monthlyPeaksLoading=false;}
+  }
+
+  _updateMonthlyPeaks() {
+    const root=this.shadowRoot;
+    if(!root)return;
+    const now=new Date(),year=now.getFullYear(),month=now.getMonth();
+    const key=year+'-'+String(month+1).padStart(2,'0');
+    const current=this._monthlyPeaks?.[key];
+    const partial=(sample,m)=>sample?.first!=null&&sample.first>new Date(year,m,1).getTime()/1000+900;
+    const fmtDate=stamp=>new Date(stamp*1000).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const currentValue=root.querySelector('.quarter-value'),currentTime=root.querySelector('.quarter-time');
+    if(!currentValue||!currentTime)return;
+    currentValue.textContent=current?.kw!=null?current.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
+    currentTime.textContent=current?.start!=null?fmtDate(current.start)+' – '+new Date((current.start+900)*1000).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):
+      'Noch kein vollständiger gespeicherter 15-Minuten-Wert';
+    if(currentTime&&partial(current,month))currentTime.textContent+=' · Daten erst ab '+fmtDate(current.first);
+    const history=root.querySelector('.monthly-history-list');
+    if(!history)return;
+    // Jan through the last completed month, newest month first.
+    const rows=[];
+    for(let m=month-1;m>=0;m--){
+      const mk=year+'-'+String(m+1).padStart(2,'0');
+      const sample=this._monthlyPeaks?.[mk];
+      const label=new Date(year,m,1).toLocaleDateString('de-AT',{month:'long'});
+      const value=sample?.kw!=null?sample.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
+      const time=sample?.start!=null?fmtDate(sample.start)+(partial(sample,m)?' · Teilzeitraum ab '+fmtDate(sample.first):''):'Keine vollständigen gespeicherten Werte';
+      rows.push('<div class="monthly-entry"><span>'+this._esc(label)+'</span><strong>'+this._esc(value)+'</strong><small>'+this._esc(time)+'</small></div>');
+    }
+    history.innerHTML=rows.length?rows.join(''):'Noch keine abgeschlossenen Monate in diesem Jahr';
+    root.querySelector('.monthly-history').hidden=!rows.length;
+  }
+
   _updateStats(m) {
     if (!this._c.show_stats) return;
     const r = this.shadowRoot;
@@ -1247,12 +1310,9 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     row(3, exportPct,
       hasExp ? exp.toFixed(2)+' kWh · eingespeist' : 'Einspeisezähler erforderlich',
       'DES PV-ERTRAGS');
-    const peak=m.historical?m.peak:this._livePeak;
-    const pvEl=r.querySelector('.quarter-value'),pt=r.querySelector('.quarter-time');
-    pvEl.textContent=peak?peak.kw.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2})+' kW':'–';
-    const fmt=t=>new Date(t).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    pt.textContent=peak?fmt(peak.from)+' – '+new Date(peak.to).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):
-      (m.historical?'Keine vollständigen Viertelstundenwerte verfügbar':'Keine vollständigen Viertelstundenwerte heute verfügbar');
+    // The peak display always refers to the CURRENT MONTH, independently
+    // of the selected energy-history filter (Live/Tag/Monat/Jahr).
+    this._updateMonthlyPeaks();
   }
 
   _layoutRadial() {

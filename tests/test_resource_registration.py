@@ -21,6 +21,7 @@ def import_integration():
         "homeassistant.config_entries", "homeassistant.core", "homeassistant.helpers",
         "homeassistant.helpers.config_validation", "smartify_flow_card",
         "smartify_flow_card.const", "smartify_flow_card.__init__",
+        "smartify_flow_card.monthly_peaks", "homeassistant.components.websocket_api",
     ):
         sys.modules.pop(mod, None)
 
@@ -47,6 +48,31 @@ def import_integration():
     sys.modules["homeassistant.config_entries"].ConfigEntry = type("ConfigEntry", (), {})
     sys.modules["homeassistant.core"].HomeAssistant = type("HomeAssistant", (), {})
     sys.modules["homeassistant.helpers.config_validation"].config_entry_only_config_schema = lambda domain: {}
+
+    # Isolate the new Recorder-backed worker from resource-only tests while
+    # retaining start/stop and WebSocket registration behavior.
+    websocket_module = types.ModuleType("homeassistant.components.websocket_api")
+    websocket_module.async_register_command = lambda _hass, _cmd: None
+    sys.modules["homeassistant.components.websocket_api"] = websocket_module
+    sys.modules["homeassistant.components"].websocket_api = websocket_module
+
+    peaks_module = types.ModuleType("smartify_flow_card.monthly_peaks")
+
+    class MonthlyPeaks:
+        def __init__(self, hass):
+            self.hass = hass
+            self.started = False
+            self.stopped = False
+
+        async def start(self):
+            self.started = True
+
+        async def stop(self):
+            self.stopped = True
+
+    peaks_module.MonthlyPeaks = MonthlyPeaks
+    peaks_module.ws_monthly_peaks = lambda *_args: None
+    sys.modules["smartify_flow_card.monthly_peaks"] = peaks_module
 
     spec = importlib.util.spec_from_file_location(
         "smartify_flow_card", PACKAGE / "__init__.py",

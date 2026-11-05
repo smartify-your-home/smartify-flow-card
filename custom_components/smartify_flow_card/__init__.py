@@ -10,12 +10,14 @@ import logging
 from pathlib import Path
 
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.components import websocket_api
 from homeassistant.components.lovelace.resources import ResourceStorageCollection
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, LEGACY_RESOURCE_PATH, RESOURCE_PATH
+from .monthly_peaks import MonthlyPeaks, ws_monthly_peaks
 
 _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -104,7 +106,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await hass.http.async_register_static_paths(
             [StaticPathConfig(RESOURCE_PATH, str(CARD_FILE), False)]
         )
-        hass.data[DOMAIN] = True
+        hass.data[DOMAIN] = {"monthly_peaks": None}
+        websocket_api.async_register_command(hass, ws_monthly_peaks)
+    if hass.data[DOMAIN]["monthly_peaks"] is None:
+        peaks = MonthlyPeaks(hass)
+        await peaks.start()
+        hass.data[DOMAIN]["monthly_peaks"] = peaks
 
     try:
         await _async_register_resource(hass, version)
@@ -121,6 +128,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload config entry without removing resource or dashboard settings."""
-    # Static routes cannot be unregistered by this integration. Leaving the
-    # resource intact avoids breaking cards during temporary reloads.
+    # Preserve the static route and WebSocket registration on reload, but stop
+    # the old poller before the new instance is created.
+    state = hass.data.get(DOMAIN)
+    if isinstance(state, dict) and state.get("monthly_peaks") is not None:
+        await state["monthly_peaks"].stop()
+        state["monthly_peaks"] = None
     return True

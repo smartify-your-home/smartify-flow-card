@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.join(__dirname,'..');
+const src=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/frontend/smartify-flow-card.js'),'utf8');
+const backend=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/monthly_peaks.py'),'utf8');
+assert.match(src,/class="card-version"[^>]*>v\$\{SFC_VERSION\}<\/div>/,'version follows shipped JS version');
+assert.match(src,/right:9px;bottom:5px/,'small bottom-right corner placement');
+assert.match(src,/type:'smartify_flow_card\/monthly_peaks',statistic_id:id/,'frontend registers true grid import total counter');
+assert.match(src,/const key=year\+'-'\+String\(month\+1\)/,'headline uses current month regardless of selected date filter');
+assert.match(src,/for\(let m=month-1;m>=0;m--\)/,'archive contains Jan through previous month');
+assert.match(src,/<details class="monthly-history">/,'expandable archive section');
+assert.match(src,/if\(currentTime&&partial\(current,month\)\)/,'incomplete month identified');
+assert.match(backend,/STORAGE_KEY = "smartify_flow_card_monthly_peaks"/,'HA persistent Store');
+assert.match(backend,/async_track_time_interval\(self.hass, self.tick, timedelta\(minutes=5\)\)/,'periodic independent collector');
+assert.match(backend,/get_instance\(self.hass\)\.async_add_executor_job/,'Recorder data queried in DB executor');
+assert.match(backend,/{"energy": "kWh"}, {"sum"}/,'explicit import energy units');
+console.log('Monthly peak UI, persistent data and version footer regressions passed');
