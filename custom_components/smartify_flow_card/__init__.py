@@ -10,12 +10,14 @@ import logging
 from pathlib import Path
 
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.components import websocket_api
 from homeassistant.components.lovelace.resources import ResourceStorageCollection
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, LEGACY_RESOURCE_PATH, RESOURCE_PATH
+from .monthly_peaks import MonthlyPeaks, ws_monthly_peaks
 
 _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -104,7 +106,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await hass.http.async_register_static_paths(
             [StaticPathConfig(RESOURCE_PATH, str(CARD_FILE), False)]
         )
-        hass.data[DOMAIN] = True
+        peaks = MonthlyPeaks(hass)
+        await peaks.start()
+        hass.data[DOMAIN] = {"monthly_peaks": peaks}
+        websocket_api.async_register_command(hass, ws_monthly_peaks)
 
     try:
         await _async_register_resource(hass, version)
