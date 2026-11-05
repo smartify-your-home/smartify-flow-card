@@ -23,5 +23,5 @@ assert.match(src,/\.monthly-entry\{grid-template-columns:minmax\(0,1fr\) auto/,'
 assert.match(src,/\.monthly-history summary,\.monthly-entry \.month-name\{font-size:\.7em/,'history and month heading share original title typography');
 assert.match(src,/\.quarter-time,\.monthly-entry small\{font-size:\.76em/,'history timestamps use original subtitle size');
 assert.match(src,/\.quarter-value,\.monthly-entry strong\{font-size:1\.15em/,'history values use original main value size');
-assert.match(src,/class=\\"month-name\\"/,'month names tagged for shared heading style');
+assert.ok(src.includes('class="month-name"'),'month names tagged for shared heading style');
 console.log('Monthly peak UI, persistent data and version footer regressions passed');
