@@ -1,3 +1,9 @@
+## Statistik-Typografie ab v0.6.23 – verbindlich
+
+- Titel „Gesamtenergiebedarf“ und „Max. 15-Min.-Netzbezug“ 0,83 em (fett); sekundärer Zeitraum/Zeitstempel 0,70 em. Primärwerte 1,15 em. Auf allen Bildschirmbreiten gleiche Hierarchie.
+- „Historie“ hat 0,83 em; Monatsname und zugehöriger kW-Wert in der aufgeklappten Liste dürfen **nicht größer** als „Historie“ erscheinen. Kein zusätzlicher Listen-Skalierungsfaktor. Zeitstempel bleiben kleiner.
+- Keine Änderung von Messwerten, gespeicherter Historie oder Berechnungslogik. Vor Release alle Tests ausführen.
+
 ## Verbraucher mit später beginnenden historischen Statistiken ab v0.6.22 – verbindlich
 
 - Aufgeklappte Historie: Monatsname und kW-Wert gegenüber dem zuvor geerbten Schriftgrad vergrößern; Zeitstempel ebenfalls gut lesbar halten. Layout bei Smartphone-Breite weiterhin ohne horizontalen Überlauf.
