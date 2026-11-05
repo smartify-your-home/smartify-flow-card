@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import UnitOfPower
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
@@ -22,9 +21,7 @@ def current_year_months(stored, now):
         month: {
             "kw": round(float(value["kw"]), 3),
             "zeitpunkt": datetime.fromtimestamp(value["start"], timezone.utc).isoformat(),
-            "teilzeitraum": value.get("first", 0) > datetime.fromisoformat(
-                month + "-01T00:00:00+00:00"
-            ).timestamp() + 900,
+            "teilzeitraum": value.get("first", 0) > dt_util.as_local(datetime.strptime(month + "-01", "%Y-%m-%d").replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)).timestamp() + 900,
         }
         for month, value in sorted(stored.items())
         if month.startswith(year + "-") and isinstance(value, dict)
@@ -69,23 +66,12 @@ class SmartifyMonthlyPeakSensor(SensorEntity):
 async def async_setup_entry(hass, entry, async_add_entities):
     """Add an entity for every registered counter, including future counters."""
     store = hass.data[DOMAIN]["monthly_peaks"]
-    known = set()
-
-    def update_sensor(stat_id):
-        if stat_id not in known:
-            known.add(stat_id)
-            async_add_entities([SmartifyMonthlyPeakSensor(store, stat_id)])
-            return
-        entity = sensors.get(stat_id)
-        if entity is not None and entity.hass is not None:
-            entity.async_write_ha_state()
 
     sensors = {}
 
     def on_change(stat_id):
         if stat_id not in sensors:
             sensors[stat_id] = SmartifyMonthlyPeakSensor(store, stat_id)
-            known.add(stat_id)
             async_add_entities([sensors[stat_id]])
         elif sensors[stat_id].hass is not None:
             sensors[stat_id].async_write_ha_state()
