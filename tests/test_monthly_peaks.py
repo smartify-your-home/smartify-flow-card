@@ -7,7 +7,7 @@ from pathlib import Path
 SOURCE = Path(__file__).resolve().parents[1] / "custom_components/smartify_flow_card/monthly_peaks.py"
 module = ast.parse(SOURCE.read_text(encoding="utf-8"))
 fn = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == "quarter_peaks")
-scope = {"math": math}
+scope = {"math": math, "FIVE": 300, "QUARTER": 900}
 exec(compile(ast.Module(body=[fn], type_ignores=[]), str(SOURCE), "exec"), scope)
 peaks = scope["quarter_peaks"]
 
