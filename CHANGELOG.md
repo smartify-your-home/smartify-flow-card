@@ -1,5 +1,8 @@
 ## v0.6.23 – Einheitliche Statistik-Typografie (vorbereitet)
 
+- Einheiten `kWh` (Gesamtenergiebedarf) sowie `kW` (aktuelles 15-Minuten-Maximum und Historie) analog zu den Verbraucher-Kacheln kleiner als die Zahlen, mit identischer gemeinsam genutzter CSS-Regel (`.val .unit`, 0,8 em, Gewicht 650).
+
+
 - Alle fünf Statistikzeilen teilen nun die CSS-Typografie der ursprünglichen Zeilen: Titel 0,70 em/800/Versalien, Zusatztext 0,76 em, Hauptwert 1,15 em/800. Keine widersprüchlichen Einzelgrößen mehr.
 - Die eingerückte **Historie** und ihre Monatszeilen übernehmen dieselben geteilten Typografie-Regeln: „Historie“/Monatsname als Titel (0,70 em), historische kW als Hauptwert (1,15 em) und Zeitstempel als Zusatztext (0,76 em). Zusätzliche relative Skalierungen entfallen.
 - Gesamtwerte bleiben bei 1,15 em; responsive Layout und Energie-/Statistikberechnungen unverändert.
