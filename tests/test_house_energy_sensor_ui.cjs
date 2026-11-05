@@ -17,8 +17,12 @@ assert.match(integration,/async_forward_entry_setups\(entry, \["sensor"\]\)/,'pl
 assert.match(js,/\.stats\{display:grid;grid-template-columns:auto 1fr;column-gap:22px;row-gap:8px;/,'statistics use compact vertical gaps');
 assert.match(js,/\.house-energy-row\{[^}]*padding:8px 0 2px;/,'energy row has short bottom padding');
 assert.match(js,/\.quarter-row\{[^}]*padding-top:8px;/,'15-minute peak follows the energy divider closely');
-assert.match(js,/\.quarter-name\{font-weight:700;font-size:\.83em/,'both statistic titles have consistent size');
-assert.match(js,/\.house-energy-value\{[^}]*font-size:1\.1em;font-weight:800/,'both statistic values share size and weight');
-assert.match(js,/\.house-energy-description small\{[^}]*font-size:\.8434em/,'secondary text has same effective size');
-assert.match(js,/@media\(max-width:420px\)\{[\s\S]{0,250}\.quarter-value\{margin-left:36px;font-size:1\.1em/,'mobile value keeps same font size');
+assert.match(js,/\.quarter-name\{font-weight:800;font-size:\.7em/,'peak title follows existing statistic titles');
+assert.match(js,/\.house-energy-description strong\{font-size:\.7em;font-weight:800/,'energy title follows existing statistic titles');
+assert.match(js,/\.house-energy-value\{[^}]*font-size:1\.15em;font-weight:800/,'total energy value matches standard statistic value');
+assert.match(js,/\.quarter-value\{font-size:1\.15em;font-weight:800/,'quarter peak value matches standard statistic value');
+assert.match(js,/\.house-energy-description small\{[^}]*font-size:\.76em/,'energy secondary text matches standard');
+assert.match(js,/\.quarter-time\{font-size:\.76em/,'peak secondary text matches standard');
+assert.match(js,/\.monthly-history\{[^}]*font-size:\.83em/,'indented history remains larger and legible');
+assert.match(js,/@media\(max-width:420px\)\{[\s\S]{0,250}\.quarter-value\{margin-left:36px;font-size:1\.15em/,'mobile value keeps same font size');
 console.log('Sensor and selected-period household energy UI checks passed');
