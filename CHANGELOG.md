@@ -1,3 +1,9 @@
+## v0.6.23 – Korrektur der Schrift-Hierarchie (vorbereitet)
+
+- „Gesamtenergiebedarf“ und „Max. 15-Min.-Netzbezug“ wieder größer als die untergeordneten Zeitangaben (0,83 em Titel; 0,70 em Unterzeile).
+- Historie-Monatsnamen und kW-Werte maximal gleich groß wie die eingerückte Beschriftung „Historie“: zusätzlichen Größenfaktor 1,15 aus der Liste entfernt. Zeitstempel bleiben dezent kleiner.
+- Gesamtwerte bleiben bei 1,15 em; responsive Layout und Energie-/Statistikberechnungen unverändert.
+
 ## v0.6.22 – Verbraucher mit später beginnenden Jahresstatistiken (2026-11-05)
 
 - Schriftgrößen innerhalb der aufgeklappten Historie erhöht (Monatsnamen/kW und Zeitstempel), mit Umbruch auf Smartphone-Displays.
