@@ -1,6 +1,6 @@
 ## Schrift-Hierarchie der Statistiken (v0.6.23, vorbereitet)
 
-Die **fünf Statistikzeilen** verwenden nun dieselben CSS-Selektoren statt separater Größen: Überschriften 0,70 em/800/Versalien, Zusatzzeilen 0,76 em und Hauptwerte 1,15 em/800. Schriftgewicht, Zeichenabstand und Darstellung stimmen überein. Die eingerückte „Historie“ bleibt unabhängig 0,83 em groß; Monatszeilen sind höchstens gleich groß.\n\n
+Die **fünf Statistikzeilen und die aufgeklappte Historie** verwenden nun dieselben CSS-Selektoren statt separater Größen: Überschriften 0,70 em/800/Versalien, Zusatzzeilen 0,76 em und Hauptwerte 1,15 em/800. Schriftgewicht, Zeichenabstand und Darstellung stimmen überein. Auch „Historie“ und Monatsnamen folgen der Titelregel (0,70 em), historische kW-Werte der Hauptwertregel (1,15 em) und deren Zeitstempel der Zusatztextregel (0,76 em). Die Einrückung bleibt erhalten.\n\n
 Die bisherigen Größenangaben der drei ursprünglichen Statistikzeilen sind die verbindliche Referenz. Für alle fünf Statistikzeilen gelten identische CSS-Regeln. Die eingerückte Historie behält ihre eigene Darstellung; die Monatswerte bleiben höchstens genauso groß wie ihr Titel.
 
 ## Historische Verbraucher mit Teiljahresdaten (ab v0.6.22)
