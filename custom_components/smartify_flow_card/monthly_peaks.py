@@ -121,9 +121,20 @@ class MonthlyPeaks:
                     local = dt_util.as_local(datetime.fromtimestamp(timestamp, timezone.utc))
                     month = local.strftime("%Y-%m")
                     old = months.get(month)
-                    if old is None or kw > old["kw"]:
-                        months[month] = {"kw": round(kw, 5), "start": timestamp}
+                    if old is None:
+                        months[month] = {"kw": round(kw, 5), "start": timestamp,
+                                         "first": timestamp, "last": timestamp}
                         changed = True
+                    else:
+                        if kw > old["kw"]:
+                            old["kw"], old["start"] = round(kw, 5), timestamp
+                            changed = True
+                        if timestamp < old.get("first", timestamp):
+                            old["first"] = timestamp
+                            changed = True
+                        if timestamp > old.get("last", timestamp):
+                            old["last"] = timestamp
+                            changed = True
             for data in self.sensors.values():
                 if data.get("last_scan") != int(end.timestamp()):
                     data["last_scan"] = int(end.timestamp())
