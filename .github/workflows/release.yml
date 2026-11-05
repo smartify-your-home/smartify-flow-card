@@ -53,6 +53,7 @@ jobs:
           node tests/test_history_flow_transitions.cjs
           node tests/test_editor_sections.cjs
           node tests/test_monthly_peaks_ui.cjs
+          node tests/test_house_energy_sensor_ui.cjs
       - name: Publish immutable version tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

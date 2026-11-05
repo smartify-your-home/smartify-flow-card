@@ -1,3 +1,10 @@
+## HA-Monatsmaximasensor und Gesamtenergiebedarf ab v0.6.20 – verbindlich
+
+- Persistente Monatsdaten weiterhin ausschließlich im Home-Assistant-Store halten. Je registriertem Netzbezugs-Gesamtenergiezähler einen echten Sensor mit aktuellem Monatsmaximum (kW) und maximal 12 aktuellen Jahresmonaten als Attribut `monatswerte` erzeugen; alte Jahre über WebSocket/Store weiterhin abrufbar. Bei neuen Zählern dynamisch Entitäten anlegen; bei Reload nicht doppelt erzeugen.
+- Zusätzliche Statistikzeile **Gesamtenergiebedarf** unter den Anteilen: Live/Tag = heute, Monat = aktueller Monat, Jahr = aktuelles Jahr, Datum = ausgewählter Zeitraum. Gleiche Bilanzformel wie `sfcHistoricalBalance`; fehlende Zähler als „–“ und keine erfundene Null. Im heutigen Wert Akku-Lade-/Entlade-Gesamtzähler verwenden, wenn Batterie vorhanden.
+- Monatsmaximum der Viertelstunden unverändert für aktuellen Monat, unabhängig vom Zeitfilter.
+- Tests `tests/test_monthly_peak_entity.py` und `tests/test_house_energy_sensor_ui.cjs` in Validate und Release.
+
 ## Dauerhafte Monatsmaxima und Kartenversionsanzeige ab v0.6.19 – verbindlich
 
 - Aus `grid.import_total` nur vollständige 15-Minuten-Intervalle aus Recorder-5-Minuten-Summen berechnen: 3 Differenzen, bei fehlenden/negativen Zählerwerten keinen Peak erzeugen. Kein Rückschluss aus Stunden-Langzeitdaten, kein interpolierter Peak.

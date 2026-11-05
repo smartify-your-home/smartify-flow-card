@@ -1,3 +1,11 @@
+## v0.6.20 – HA-Sensor für Monatsmaxima und Gesamtenergiebedarf (2026-11-05)
+
+- Home-Assistant-Sensorplattform für registrierte Netzbezugs-Gesamtenergiezähler; aktuelles 15-Minuten-Monatsmaximum als kW-Sensor und aktuelles Kalenderjahr als kompakte `monatswerte`-Attribute inklusive Zeitstempeln.
+- Unbegrenztes mehrjähriges Archiv verbleibt im bestehenden persistenten Store; Sensorattribute bleiben auf ein Jahr begrenzt. Neuregistrierung und Werteänderungen werden an den Sensor gemeldet; Plattform wird bei Integration-Reload sauber entladen.
+- Neue Statistikzeile **Gesamtenergiebedarf** im Live-Modus (heute) und in Historie (Tag, Monat, Jahr, eigener Zeitraum) mittels derselben bilanzierten Hausenergie wie die bestehende Quellenzuordnung. Ungültige Daten erscheinen als „–“.
+- Akkuenergie für heutige Bilanz aus den konfigurierten Gesamtenergiezählern ergänzend abgefragt. Keine veränderte 15-Minuten-Monatsmaximum-Logik.
+- Unit-/UI-Regressionstests, Dokumentation und Versionsdaten auf v0.6.20 angehoben.
+
 ## v0.6.19 – Dauerhafte 15-Minuten-Monatsmaxima und Versionsanzeige (2026-11-05)
 
 - Serverbasierter Recorder-Sammler für vollständige Viertelstunden aus dem Netzbezugs-Gesamtenergiezähler, 5-minütlich, eigene HA-.storage-Datenpersistenz nach Neustarts und Dashboard-Schließung.

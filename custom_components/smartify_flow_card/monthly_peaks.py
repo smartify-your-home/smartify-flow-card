@@ -49,6 +49,7 @@ class MonthlyPeaks:
         self.sensors = {}
         self.lock = asyncio.Lock()
         self.unsub = None
+        self._listeners = set()
 
     async def start(self):
         saved = await self.storage.async_load() or {}
@@ -64,10 +65,19 @@ class MonthlyPeaks:
     async def tick(self, _now):
         await self.refresh()
 
+    def subscribe(self, callback):
+        self._listeners.add(callback)
+        return lambda: self._listeners.discard(callback)
+
+    def _notify(self, statistic_id):
+        for callback in tuple(self._listeners):
+            callback(statistic_id)
+
     async def register(self, statistic_id: str):
         if statistic_id not in self.sensors:
             self.sensors[statistic_id] = {"months": {}, "last_scan": 0}
             await self.storage.async_save({"sensors": self.sensors})
+            self._notify(statistic_id)
         await self.refresh()
         return self.view(statistic_id)
 
@@ -141,6 +151,8 @@ class MonthlyPeaks:
                     changed = True
             if changed:
                 await self.storage.async_save({"sensors": self.sensors})
+                for statistic_id in self.sensors:
+                    self._notify(statistic_id)
 
 
 @websocket_api.websocket_command({
