@@ -161,6 +161,7 @@ class FlowResourcesTests(unittest.IsolatedAsyncioTestCase):
         ha = types.SimpleNamespace(
             data={"lovelace": types.SimpleNamespace(resource_mode="storage", resources=c)},
             http=http,
+            config_entries=types.SimpleNamespace(async_forward_entry_setups=AsyncMock(),async_unload_platforms=AsyncMock()),
         )
         self.assertTrue(await self.mod.async_setup_entry(ha, object()))
         http.async_register_static_paths.assert_awaited_once()
