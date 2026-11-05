@@ -923,7 +923,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .bd{flex:0 1 auto;box-sizing:border-box;max-width:60%;margin-left:auto;font-family:inherit;font-size:.6em;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:var(--sf-r);color:var(--sf-txt);
   background:var(--sf-pill-bg);border:var(--sf-pill-bd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
 .bd:empty{display:none}
-.val .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
+.val .unit,.house-energy-value .unit,.quarter-value .unit,.monthly-entry strong .unit{font-size:.8em;font-weight:650;color:var(--sf-txt)}
 .val{font-size:1.55em;font-weight:800;line-height:1.15;margin-top:4px;color:var(--sf-txt);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sub,.sub2{font-family:inherit;font-size:.76em;font-weight:400;color:var(--sf-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:block}
 
@@ -952,7 +952,6 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .row .rt,.house-energy-description strong,.quarter-name,.monthly-history summary,.monthly-entry .month-name{font-size:.7em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sf-txt)}
 .row .rs,.house-energy-description small,.quarter-time,.monthly-entry small{font-size:.76em;color:var(--sf-sub)}
 .row .rp,.house-energy-value,.quarter-value,.monthly-entry strong{font-size:1.15em;font-weight:800;color:var(--sf-txt)}
-.house-energy-value .unit,.quarter-value .unit,.monthly-entry strong .unit{font-size:.8em;font-weight:650}
 
 .row .rs b{color:var(--sf-txt)}
 .row .bar{grid-column:1 / -1}
