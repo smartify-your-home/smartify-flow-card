@@ -30,7 +30,7 @@ def quarter_peaks(points: dict[int, float], start: int, end: int):
 
     Recorder SUM belongs to the end of the labeled 5-minute bucket.
     """
-    for t in range((start + QUARTER - 1) // QUARTER * QUARTER, end, QUARTER):
+    for t in range((start + QUARTER - 1) // QUARTER * QUARTER, end - QUARTER + 1, QUARTER):
         vals = [points.get(t + offset) for offset in (-FIVE, 0, FIVE, 2 * FIVE)]
         if any(v is None or not math.isfinite(v) for v in vals):
             continue
@@ -66,7 +66,7 @@ class MonthlyPeaks:
 
     async def register(self, statistic_id: str):
         if statistic_id not in self.sensors:
-            self.sensors[statistic_id] = {"months": {}}
+            self.sensors[statistic_id] = {"months": {}, "last_scan": 0}
             await self.storage.async_save({"sensors": self.sensors})
         await self.refresh()
         return self.view(statistic_id)
@@ -81,7 +81,9 @@ class MonthlyPeaks:
             now = dt_util.utcnow()
             # A fresh window reaches back nine days, safely within the
             # default ten-day retention and across a month boundary.
-            start = now - timedelta(days=9)
+            earliest = now - timedelta(days=9)
+            last_scan = min((data.get("last_scan", 0) for data in self.sensors.values()), default=0)
+            start = max(earliest, datetime.fromtimestamp(last_scan - 3600, timezone.utc)) if last_scan else earliest
             # Never ask for unfinished five-minute intervals.
             end = now.replace(second=0, microsecond=0)
             end -= timedelta(minutes=end.minute % 5)
@@ -118,6 +120,10 @@ class MonthlyPeaks:
                     if old is None or kw > old["kw"]:
                         months[month] = {"kw": round(kw, 5), "start": timestamp}
                         changed = True
+            for data in self.sensors.values():
+                if data.get("last_scan") != int(end.timestamp()):
+                    data["last_scan"] = int(end.timestamp())
+                    changed = True
             if changed:
                 await self.storage.async_save({"sensors": self.sensors})
 
