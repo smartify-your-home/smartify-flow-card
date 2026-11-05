@@ -854,10 +854,10 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .history-buttons button{padding:9px 14px;min-height:40px;font:inherit;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
 .history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff)}
 .house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 0 2px;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
-.house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.house-energy-description strong{font-size:.83em;font-weight:800}.house-energy-description small{color:var(--sf-sub);font-size:.7em}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.15em;font-weight:800}
+.house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.house-energy-description strong{overflow-wrap:anywhere}.house-energy-description small{overflow-wrap:anywhere}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap}
 .quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:8px;border-top:1px solid var(--divider-color);flex-wrap:wrap}
-.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1 1 160px;min-width:0}.quarter-name{font-weight:800;font-size:.83em;overflow-wrap:anywhere}
-.quarter-time{font-size:.7em;color:var(--sf-sub);overflow-wrap:anywhere}.quarter-value{font-size:1.15em;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%;margin-left:auto}
+.quarter-row ha-icon{flex:none;color:var(--sf-txt)}.quarter-desc{flex:1 1 160px;min-width:0}.quarter-name{overflow-wrap:anywhere}
+.quarter-time{overflow-wrap:anywhere}.quarter-value{white-space:nowrap;font-variant-numeric:tabular-nums;max-width:100%;margin-left:auto}
 .monthly-history{grid-column:1/-1;border-top:0;margin:-5px 0 0 36px;padding:0;min-width:0;font-size:.83em;color:var(--sf-txt)}
 .monthly-history[hidden]{display:none}
 .monthly-history summary{cursor:pointer;font-weight:650;user-select:none;padding:7px 0;min-height:28px;overflow-wrap:anywhere}
@@ -943,11 +943,16 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .ring .lb{font-size:.52em;font-weight:800;letter-spacing:.08em;color:var(--sf-sub);margin-top:2px}
 .rows{display:flex;flex-direction:column;gap:14px;min-width:0}
 .row{--c:#888;display:grid;grid-template-columns:1fr auto;column-gap:8px}
-.row .rt{font-size:.7em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sf-txt);display:flex;align-items:center;gap:6px}
+.row .rt{display:flex;align-items:center;gap:6px}
 .row .rt::before{content:'';width:10px;height:10px;background:var(--c);border:1px solid var(--sf-bc);flex:none}
-.row .rp{font-size:1.15em;font-weight:800;color:var(--sf-txt);text-align:right;grid-row:span 2;line-height:1}
+.row .rp{text-align:right;grid-row:span 2;line-height:1}
 .row .rp small{display:block;font-size:.48em;color:var(--sf-sub);font-weight:700;letter-spacing:.05em}
-.row .rs{font-size:.76em;color:var(--sf-sub)}
+/* Shared typography: all five statistics use the SAME hierarchy.
+   Do not assign independent font sizes inside the two added rows. */
+.row .rt,.house-energy-description strong,.quarter-name{font-size:.7em;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sf-txt)}
+.row .rs,.house-energy-description small,.quarter-time{font-size:.76em;color:var(--sf-sub)}
+.row .rp,.house-energy-value,.quarter-value{font-size:1.15em;font-weight:800;color:var(--sf-txt)}
+
 .row .rs b{color:var(--sf-txt)}
 .row .bar{grid-column:1 / -1}
 @media (max-width:480px){.flow{grid-template-columns:minmax(0,1fr) minmax(36px,.4fr) minmax(0,1fr)}.val{font-size:1.2em}.stats{grid-template-columns:1fr}.ring{margin:0 auto}}
