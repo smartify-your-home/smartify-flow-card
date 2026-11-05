@@ -1,3 +1,11 @@
+## v0.6.19 – Dauerhafte 15-Minuten-Monatsmaxima und Versionsanzeige (2026-11-05)
+
+- Serverbasierter Recorder-Sammler für vollständige Viertelstunden aus dem Netzbezugs-Gesamtenergiezähler, 5-minütlich, eigene HA-.storage-Datenpersistenz nach Neustarts und Dashboard-Schließung.
+- Oberhalb der Historie stets Maximum des aktuellen Monats statt Tages- oder Jahresmaximum; aufklappbare Vormonate bis inklusive Jänner, mit kW und Zeitstempel.
+- Bis zu neun Tage Rückabdeckung; nicht rekonstruierbare ältere 5-Minuten-Rohdaten werden nicht geschätzt, fehlende Monatsanfänge als Teilzeitraum ausgewiesen.
+- Kleine, themeangepasste Versionsnummer in der unteren rechten Ecke der Flow Card, automatisch aus SFC_VERSION.
+- Tests für vollständige 15-Minuten-Buckets, Zählerreset, fehlende Werte, Monatsanzeige, Speicher und Version sowie CI eingebunden. Alte Lovelace-Konfiguration bleibt unverändert; Recorder wird als Integrationsabhängigkeit ergänzt.
+
 ## v0.6.18 – Klappbare Editor-Bereiche (2026-11-05)
 
 - Alle Bereiche des visuellen Editors (Photovoltaik, Stromnetz, Batteriespeicher, Verbraucher, Darstellung & Animation, Sicherung …) sind per Klick auf die Überschrift auf-/zuklappbar (auch per Tastatur: Enter/Leertaste).
