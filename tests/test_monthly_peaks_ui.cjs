@@ -20,6 +20,8 @@ assert.match(src,/\.monthly-history\{grid-column:1\/-1;border-top:0;margin:-5px 
 assert.match(src,/@media\(max-width:420px\)/,'narrow smartphone layout present');
 assert.match(src,/\.quarter-desc\{flex-basis:calc\(100% - 48px\)\}/,'peak title can wrap on phones');
 assert.match(src,/\.monthly-entry\{grid-template-columns:minmax\(0,1fr\) auto/,'month values stay in bounded grid');
-assert.match(src,/\.monthly-history-list\{[^}]*font-size:1em/,'history months are not larger than history toggle');
-assert.match(src,/\.monthly-entry small\{[^}]*font-size:\.9em/,'expanded history timestamps remain comfortably readable');
+assert.match(src,/\.monthly-history summary,\.monthly-entry \.month-name\{font-size:\.7em/,'history and month heading share original title typography');
+assert.match(src,/\.quarter-time,\.monthly-entry small\{font-size:\.76em/,'history timestamps use original subtitle size');
+assert.match(src,/\.quarter-value,\.monthly-entry strong\{font-size:1\.15em/,'history values use original main value size');
+assert.match(src,/class=\\"month-name\\"/,'month names tagged for shared heading style');
 console.log('Monthly peak UI, persistent data and version footer regressions passed');
