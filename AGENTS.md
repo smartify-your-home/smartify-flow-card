@@ -1,5 +1,8 @@
 ## Statistik-Typografie ab v0.6.23 – verbindlich
 
+- Einheiten `kWh` / `kW` in Gesamtenergiebedarf, aktuellen Viertelstunden-Maxima und Historiemonaten **als gesonderte `<span class="unit">`** ausgeben und dieselbe CSS-Definition `.val .unit` der Verbraucher-Kacheln nutzen (0,8em, 650). Keine voneinander abweichenden Größenregeln für Maßeinheiten.
+
+
 - **Alle fünf Statistikzeilen MÜSSEN dieselben CSS-Typografie-Selektoren verwenden** wie die drei ursprünglichen Zeilen: Titel `.row .rt` = 0,70 em / 800 / uppercase / 0,06em letter spacing, Sekundärtext `.row .rs` = 0,76 em, Werte `.row .rp` = 1,15 em / 800. Für Gesamtenergiebedarf/15-Minuten-Netzbezug keine separaten Größen definieren; gemeinsame Selektoren verwenden. Auf allen Bildschirmbreiten gleiche Hierarchie.
 - Die eingerückte „Historie“ **und** die Monatsliste teilen dieselben CSS-Regeln wie die übrigen Statistiken: „Historie“/Monatsname = Titel, historischer kW-Wert = Hauptwert, Datum/Erfassungszeit = Zusatztext. Kein globaler font-size-Skalierungsfaktor für die Liste.
 - Keine Änderung von Messwerten, gespeicherter Historie oder Berechnungslogik. Vor Release alle Tests ausführen.
