@@ -1,6 +1,6 @@
-## v0.6.23 – Korrektur der Schrift-Hierarchie (vorbereitet)
+## v0.6.23 – Einheitliche Statistik-Typografie (vorbereitet)
 
-- „Gesamtenergiebedarf“ und „Max. 15-Min.-Netzbezug“ wieder größer als die untergeordneten Zeitangaben (0,83 em Titel; 0,70 em Unterzeile).
+- Alle fünf Statistikzeilen teilen nun die CSS-Typografie der ursprünglichen Zeilen: Titel 0,70 em/800/Versalien, Zusatztext 0,76 em, Hauptwert 1,15 em/800. Keine widersprüchlichen Einzelgrößen mehr.
 - Historie-Monatsnamen und kW-Werte maximal gleich groß wie die eingerückte Beschriftung „Historie“: zusätzlichen Größenfaktor 1,15 aus der Liste entfernt. Zeitstempel bleiben dezent kleiner.
 - Gesamtwerte bleiben bei 1,15 em; responsive Layout und Energie-/Statistikberechnungen unverändert.
 
