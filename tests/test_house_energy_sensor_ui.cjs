@@ -17,4 +17,8 @@ assert.match(integration,/async_forward_entry_setups\(entry, \["sensor"\]\)/,'pl
 assert.match(js,/\.stats\{display:grid;grid-template-columns:auto 1fr;column-gap:22px;row-gap:8px;/,'statistics use compact vertical gaps');
 assert.match(js,/\.house-energy-row\{[^}]*padding:8px 0 2px;/,'energy row has short bottom padding');
 assert.match(js,/\.quarter-row\{[^}]*padding-top:8px;/,'15-minute peak follows the energy divider closely');
+assert.match(js,/\.quarter-name\{font-weight:700;font-size:\.83em/,'both statistic titles have consistent size');
+assert.match(js,/\.house-energy-value\{[^}]*font-size:1\.1em;font-weight:800/,'both statistic values share size and weight');
+assert.match(js,/\.house-energy-description small\{[^}]*font-size:\.8434em/,'secondary text has same effective size');
+assert.match(js,/@media\(max-width:420px\)\{[^}]*\.quarter-value\{margin-left:36px;font-size:1\.1em/,'mobile value keeps same font size');
 console.log('Sensor and selected-period household energy UI checks passed');
