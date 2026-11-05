@@ -1,6 +1,7 @@
 ## Schrift-Hierarchie der Statistiken (v0.6.23, vorbereitet)
 
-„Gesamtenergiebedarf“ und „Max. 15-Min.-Netzbezug“ sind wieder stärker hervorgehoben als „Aktuelles Jahr“ bzw. Datum/Zeitstempel: Titel **0,83 em**, Zusatzinformation **0,70 em**, Werte **1,15 em**. Im eingerückten Bereich **„Historie“** haben Monatsnamen und Monatswerte höchstens die Schriftgröße des Ausklapp-Titels (0,83 em, zuvor zusätzlich um den Faktor 1,15 vergrößert); Zeitstempel bleiben kleiner. Dieselben Größen gelten auf Smartphones, mit Umbruch statt Überlauf.
+Die **fünf Statistikzeilen** verwenden nun dieselben CSS-Selektoren statt separater Größen: Überschriften 0,70 em/800/Versalien, Zusatzzeilen 0,76 em und Hauptwerte 1,15 em/800. Schriftgewicht, Zeichenabstand und Darstellung stimmen überein. Die eingerückte „Historie“ bleibt unabhängig 0,83 em groß; Monatszeilen sind höchstens gleich groß.\n\n
+Die bisherigen Größenangaben der drei ursprünglichen Statistikzeilen sind die verbindliche Referenz. Für alle fünf Statistikzeilen gelten identische CSS-Regeln. Die eingerückte Historie behält ihre eigene Darstellung; die Monatswerte bleiben höchstens genauso groß wie ihr Titel.
 
 ## Historische Verbraucher mit Teiljahresdaten (ab v0.6.22)
 
