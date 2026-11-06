@@ -1,3 +1,9 @@
+## v0.6.25 – Icon und Logo (2026-11-06)
+
+- Eigenes Icon und Logo im smartify-Stil unter `custom_components/smartify_flow_card/brand/` (hell/dunkel, je 1x/2x). Home Assistant zeigt es ab 2026.3 unter Geräte & Dienste.
+- Logo oben in der README.
+- Keine Änderung an Karte, Logik oder Konfiguration.
+
 ## v0.6.24 – Kein blockierender Dateizugriff beim Start (2026-11-06)
 
 - Behoben: Home-Assistant-Warnung „Detected blocking call to open … smartify_flow_card/__init__.py“. Die Manifest-Version wird jetzt beim Import der Integration gelesen (läuft im Executor) statt im Event-Loop während `async_setup_entry`.
