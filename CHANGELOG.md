@@ -1,4 +1,9 @@
-## v0.6.23 – Einheitliche Statistik-Typografie (vorbereitet)
+## v0.6.24 – Kein blockierender Dateizugriff beim Start (2026-11-06)
+
+- Behoben: Home-Assistant-Warnung „Detected blocking call to open … smartify_flow_card/__init__.py“. Die Manifest-Version wird jetzt beim Import der Integration gelesen (läuft im Executor) statt im Event-Loop während `async_setup_entry`.
+- Keine Änderung an Karte, Ressourcen-Registrierung, Monatsmaxima oder Konfiguration.
+
+## v0.6.23 – Einheitliche Statistik-Typografie
 
 - Einheiten `kWh` (Gesamtenergiebedarf) sowie `kW` (aktuelles 15-Minuten-Maximum und Historie) analog zu den Verbraucher-Kacheln kleiner als die Zahlen, mit identischer gemeinsam genutzter CSS-Regel (`.val .unit`, 0,8 em, Gewicht 650).
 

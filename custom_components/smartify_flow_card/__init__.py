@@ -6,6 +6,7 @@ integration NEVER changes consumer/entity configurations or dashboards.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -24,12 +25,17 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 CARD_FILE = Path(__file__).parent / "frontend" / "smartify-flow-card.js"
 
 
-def _card_version() -> str:
-    """Read the shipped manifest version (which must match the card version)."""
-    import json
+# Read once at import time: HA imports custom integrations in an executor
+# thread, so file I/O here does not block the event loop. Reading the
+# manifest inside async_setup_entry triggered "Detected blocking call to open".
+with (Path(__file__).parent / "manifest.json").open(encoding="utf-8") as _manifest:
+    _VERSION: str = json.load(_manifest)["version"]
+_CARD_FILE_EXISTS = CARD_FILE.is_file()
 
-    with (Path(__file__).parent / "manifest.json").open(encoding="utf-8") as file:
-        return json.load(file)["version"]
+
+def _card_version() -> str:
+    """Shipped manifest version (which must match the card version)."""
+    return _VERSION
 
 
 def _is_own_resource(url: str) -> bool:
@@ -96,7 +102,7 @@ async def _async_register_resource(hass: HomeAssistant, version: str) -> None:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Register a versioned frontend resource when the integration loads."""
-    if not CARD_FILE.is_file():
+    if not _CARD_FILE_EXISTS:
         _LOGGER.error("Missing Smartify Flow Card JavaScript: %s", CARD_FILE)
         return False
 
