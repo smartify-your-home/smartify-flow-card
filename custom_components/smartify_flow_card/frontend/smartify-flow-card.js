@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.26';
+const SFC_VERSION = '0.6.27';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -228,6 +228,31 @@ function sfcEnergyDelta(points,from,to) {
   if(!points||!points.has(from-hour)||!points.has(to-hour))return null;
   const x=points.get(from-hour),y=points.get(to-hour);
   return y>=x?y-x:null;
+}
+
+// Lesbare Schriftfarbe für einen Balkenabschnitt: schwarz oder weiß, je nachdem
+// was zur tatsächlich gerenderten Hintergrundfarbe den höheren Kontrast (WCAG) hat.
+// Erwartet einen von getComputedStyle gelieferten Farbwert. Unbekanntes Format oder
+// (fast) transparenter Hintergrund → null (CSS-Standard bleibt).
+function sfcContrastText(cssColor) {
+  const raw = String(cssColor || '').trim();
+  let m = raw.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/i);
+  let rgb;
+  let alpha = 1;
+  if (m) {
+    rgb = [m[1], m[2], m[3]].map(Number).map(v => v / 255);
+    if (m[4] != null) alpha = m[4].endsWith('%') ? parseFloat(m[4]) / 100 : Number(m[4]);
+  } else if ((m = raw.match(/^color\(\s*srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/i))) {
+    rgb = [m[1], m[2], m[3]].map(Number);
+    if (m[4] != null) alpha = m[4].endsWith('%') ? parseFloat(m[4]) / 100 : Number(m[4]);
+  } else return null;
+  if (!rgb.every(Number.isFinite) || !(alpha >= 0.5)) return null;
+  const lin = c => { c = Math.min(1, Math.max(0, c)); return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+  const DARK_L = 0.0056; // #111111
+  const vsWhite = 1.05 / (L + 0.05);
+  const vsDark = (L + 0.05) / (DARK_L + 0.05);
+  return vsDark >= vsWhite ? '#111111' : '#ffffff';
 }
 
 class SmartifyFlowCard extends HTMLElement {
@@ -907,7 +932,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 .source-segment span[hidden]{display:none}
 .source-segment.pv{background:var(--smartify-flow-pv-stripe-color,#e3a600);color:#251e07}
 .source-segment.battery{background:var(--smartify-flow-battery-color,#2e7d32);color:#fff}
-.source-segment.grid{background:var(--c);color:var(--primary-text-color,#111);text-shadow:0 1px 2px var(--card-background-color,#fff),0 -1px 2px var(--card-background-color,#fff)}
+.source-segment.grid{background:var(--c);color:var(--primary-text-color,#111)}
 /* Keep each consumer's chosen color as the grid (remaining) share. */
 .source-segment.unassigned{background:var(--sf-track);color:var(--sf-txt)}
 .source-segment + .source-segment{border-left:1px solid color-mix(in srgb,var(--sf-bc) 50%,transparent)}
@@ -1056,6 +1081,14 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       const label = segment.firstElementChild;
       const display = `${Math.round(pct)} % ${item.name}`;
       if (label.textContent !== display) label.textContent = display;
+      // Schriftfarbe an die tatsächlich gerenderte Hintergrundfarbe anpassen
+      // (Gerätefarbe beim Netzanteil, Theme-Variablen bei PV/Akku).
+      const bg = getComputedStyle(segment).backgroundColor;
+      if (segment.dataset.bg !== bg) {
+        segment.dataset.bg = bg;
+        const text = sfcContrastText(bg);
+        if (text) segment.style.color = text; else segment.style.removeProperty('color');
+      }
     });
     const aria = entries.map(item => `${Math.round(item.w / n.w * 100)} Prozent ${item.name}`).join(', ');
     if (strip.getAttribute('aria-label') !== aria) strip.setAttribute('aria-label', aria);

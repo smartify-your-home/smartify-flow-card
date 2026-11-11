@@ -23,3 +23,22 @@ assert.match(code, /required \+ 3/, 'hysteresis prevents flashing around narrow-
 assert.match(code, /required - 3/, 'opposite hysteresis threshold applied when visible');
 assert.doesNotMatch(code, /label\.hidden = false;\s*\/\/ Tiny segments/, 'old unconditional visibility reset removed');
 console.log('Color-segment footer layout tests passed');
+
+// v0.6.27: share-bar label color follows the rendered background color.
+{
+  const begin = code.indexOf('function sfcContrastText(');
+  const end = code.indexOf('\nclass SmartifyFlowCard extends HTMLElement', begin);
+  assert.ok(begin >= 0 && end > begin, 'contrast helper exists');
+  const contrast = require('node:vm').runInNewContext(code.slice(begin, end) + '\nsfcContrastText');
+  assert.equal(contrast('rgb(142, 36, 170)'), '#ffffff', 'violet device color → white text');
+  assert.equal(contrast('rgb(136, 136, 136)'), '#111111', 'grey (rest) → dark text');
+  assert.equal(contrast('rgb(227, 166, 0)'), '#111111', 'PV yellow → dark text');
+  assert.equal(contrast('rgb(46, 125, 50)'), '#ffffff', 'battery green → white text');
+  assert.equal(contrast('rgb(17 17 17)'), '#ffffff', 'space syntax, dark grid color → white text');
+  assert.equal(contrast('rgba(255, 255, 255, 0.9)'), '#111111');
+  assert.equal(contrast('color(srgb 0.1 0.2 0.6)'), '#ffffff');
+  assert.equal(contrast('rgba(0, 0, 0, 0)'), null, 'transparent keeps CSS default');
+  assert.equal(contrast('oklch(0.5 0.1 200)'), null, 'unknown format keeps CSS default');
+  assert.doesNotMatch(code, /\.source-segment\.grid\{[^}]*text-shadow/, 'no light glow behind grid label');
+  assert.match(code, /segment\.dataset\.bg !== bg/, 'color is only recomputed when the background changes');
+}
