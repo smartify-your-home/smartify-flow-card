@@ -1,3 +1,9 @@
+## v0.6.27 – Lesbare Beschriftung im Quellenbalken (2026-11-11)
+
+- Die Prozentbeschriftung im Quellenbalken („42 % PV“, „58 % Netz“) wählt jetzt automatisch Schwarz oder Weiß, je nachdem, was auf der tatsächlich angezeigten Hintergrundfarbe besser lesbar ist (WCAG-Kontrast). Bisher war der Netzanteil immer in Textfarbe mit hellem Schatten beschriftet und auf dunklen Gerätefarben (z. B. Violett) oder Grau schlecht lesbar.
+- Gilt auch für PV- und Akkuanteil, wenn deren Farben per Theme geändert sind. Der helle Textschatten entfällt.
+- Keine Änderung an Aufteilung, Werten oder Konfiguration.
+
 ## v0.6.26 – Karten-JavaScript wird im Browser gecacht (2026-11-11)
 
 - Die Kartendatei `/smartify_flow_card/smartify-flow-card.js?v=<VERSION>` wird jetzt mit Cache-Headern ausgeliefert. Bisher wurde sie bei jedem Seitenaufruf neu angefragt; auf langsamen Geräten konnte Home Assistant dadurch kurz „Konfigurationsfehler“ anzeigen, bis die Karte geladen war.
