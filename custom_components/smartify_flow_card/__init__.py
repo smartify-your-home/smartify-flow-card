@@ -108,9 +108,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     version = _card_version()
     if DOMAIN not in hass.data:
-        # False => no long-lived cache. Version query changes on each release.
+        # True => long-lived browser cache. Safe because the resource URL carries
+        # ?v=<version> and every published change gets a new version, so a new
+        # release is always fetched under a new URL. Without caching each page
+        # load re-requested the card and delayed its registration on slow devices.
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(RESOURCE_PATH, str(CARD_FILE), False)]
+            [StaticPathConfig(RESOURCE_PATH, str(CARD_FILE), True)]
         )
         hass.data[DOMAIN] = {"monthly_peaks": None}
         websocket_api.async_register_command(hass, ws_monthly_peaks)
