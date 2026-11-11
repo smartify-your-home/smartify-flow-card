@@ -1,7 +1,7 @@
 {
   "domain": "smartify_flow_card",
   "name": "Smartify Flow Card",
-  "version": "0.6.25",
+  "version": "0.6.26",
   "documentation": "https://github.com/smartify-your-home/smartify-flow-card",
   "issue_tracker": "https://github.com/smartify-your-home/smartify-flow-card/issues",
   "codeowners": [],

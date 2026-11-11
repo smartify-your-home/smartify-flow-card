@@ -1,3 +1,9 @@
+## v0.6.26 – Karten-JavaScript wird im Browser gecacht (2026-11-11)
+
+- Die Kartendatei `/smartify_flow_card/smartify-flow-card.js?v=<VERSION>` wird jetzt mit Cache-Headern ausgeliefert. Bisher wurde sie bei jedem Seitenaufruf neu angefragt; auf langsamen Geräten konnte Home Assistant dadurch kurz „Konfigurationsfehler“ anzeigen, bis die Karte geladen war.
+- Unkritisch für Updates: Jede Version hat durch `?v=` eine eigene URL und wird nach dem Update neu geladen. Wer die JS-Datei ohne Versionssprung von Hand ersetzt, muss den Browser-/App-Cache leeren.
+- Keine Änderung an Karte, Logik, Monatsmaxima oder Konfiguration.
+
 ## v0.6.25 – Icon und Logo (2026-11-06)
 
 - Eigenes Icon und Logo im smartify-Stil unter `custom_components/smartify_flow_card/brand/` (hell/dunkel, je 1x/2x). Home Assistant zeigt es ab 2026.3 unter Geräte & Dienste.

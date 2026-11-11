@@ -1,3 +1,8 @@
+## Cache-Header der Kartendatei ab v0.6.26 – verbindlich
+
+- Die Kartendatei wird mit `StaticPathConfig(..., True)` (langlebiger Browser-Cache) ausgeliefert. Das ist nur sicher, weil die Ressourcen-URL `?v=<VERSION>` trägt: **Jede** veröffentlichte JS-Änderung braucht eine neue Version, sonst liefern Browser/Apps die alte Datei. Test: `tests/test_resource_registration.py` (`test_setup_static_and_resource`).
+- Die Karte nicht zusätzlich über `add_extra_js_url` einbinden: Extra-JS im `<head>` kann vor dem Custom-Element-Polyfill des HA-Frontends laufen und erzeugt dann dauerhaft „Konfigurationsfehler“ (siehe smartify-energy-pro 0.3.62).
+
 ## Statistik-Typografie ab v0.6.23 – verbindlich
 
 - Einheiten `kWh` / `kW` in Gesamtenergiebedarf, aktuellen Viertelstunden-Maxima und Historiemonaten **als gesonderte `<span class="unit">`** ausgeben und dieselbe CSS-Definition `.val .unit` der Verbraucher-Kacheln nutzen (0,8em, 650). Keine voneinander abweichenden Größenregeln für Maßeinheiten.

@@ -167,7 +167,8 @@ class FlowResourcesTests(unittest.IsolatedAsyncioTestCase):
         http.async_register_static_paths.assert_awaited_once()
         args = http.async_register_static_paths.await_args.args[0]
         self.assertEqual(args[0].path, "/smartify_flow_card/smartify-flow-card.js")
-        self.assertFalse(args[0].cache_headers)
+        # Versioned URL (?v=<version>) => long-lived cache is safe and intended.
+        self.assertTrue(args[0].cache_headers)
         self.assertTrue(c.items)
 
 
