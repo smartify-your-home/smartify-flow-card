@@ -1,3 +1,17 @@
+## GitHub-Validate-Auslöser: Mail-Flut vermeiden (ab 12.11.2026) – verbindlich
+
+- `validate.yml` **nicht bei jedem Push oder PR-Synchronize** automatisch starten. Es läuft bei bewusstem **Ready for review** (und erneutem Öffnen) sowie manuell über `workflow_dispatch`. Pro Pull Request bleibt nur der neueste gleichzeitige Lauf aktiv (Concurrency + cancel-in-progress). `release.yml` testet weiterhin beim Versions-Update auf main, vor Veröffentlichung.
+- Entwicklungs-Commits vor dem Ready-Status ohne unnötige Validate-Läufe halten. Tests **nicht deaktivieren, löschen oder abschwächen**. Nach gewünschter Freigabe den vollständigen Check bewusst starten und bei Fehlern **beheben, nicht ignorieren**.
+- E-Mail-Benachrichtigungen sind GitHub-Kontoeinstellungen und können durch Repo-Workflow-Code allein nicht vollständig deaktiviert werden.
+
+## Zeitraum-Picker ab v0.6.28 – verbindlich
+
+- Oben nur **Live** und die HA-orientierte Auswahl **Zurück / beschrifteter Kalender-Picker / Vorwärts**. Alte separate Buttons Datum/Tag/Monat/Jahr nicht wiederherstellen. Bestehende Live-Leistungsansicht unverändert.
+- Kalender-Popup bietet alle zehn Schnellzeiträume (Heute, Gestern, Diese Woche, Dieser Monat, Dieses Quartal, Dieses Jahr, Letzte 7/30/365 Tage, Letzte 12 Monate), Monatsnavigation, einzelne Tage und beliebige freie Bereiche. Bestätigung bewusst durch **Auswählen**, Abbrechen/Escape ohne Zustandsänderung; HA-State-Updates dürfen es nicht neu aufbauen.
+- Pfeilnavigation entspricht dem gewählten Kalenderintervall oder bei freier Wahl der Bereichslänge. Zukunftsdaten untersagen, heutige Werte bei jetzt abschneiden. Fünf-Jahres-Grenze, korrekte DST-/Monatsübergänge, Theme-/Mobile-Darstellung beibehalten.
+- Neue Regression `tests/test_period_picker.cjs` in **Validate und Release**. Bestehende Tests für historischen Verlauf, SVG-Pfade, Monatsmaxima und HA-Ressourcenregistrierung nicht schwächen. SemVer/README/CHANGELOG/Version-URL synchron halten.
+- Die ursprünglichen Regelabschnitte zu separaten Schnellbuttons v0.6.11/13 sind historisch; für die sichtbare Bedienung hat diese neue Regel Vorrang.
+
 ## ⚠️ VERBINDLICH: Laden der Dashboard-Karte (Stand 11.11.2026) – nicht zurückbauen
 
 An den smartify-Repos wird parallel gearbeitet. Diese Regel gilt identisch in `smartify-energy-pro`, `smartify-flow-card`, `smartify-row-card` und `my-weather` und darf von keinem Agenten und keiner Person ohne ausdrückliche Freigabe des Repository-Eigentümers geändert oder „wiederhergestellt“ werden – auch nicht beim Mergen/Rebasen älterer Branches.

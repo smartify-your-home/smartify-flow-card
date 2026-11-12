@@ -18,9 +18,11 @@ assert.equal(partial.to,+now,'today ends at current time, not tomorrow');
 assert.equal(partial.isToday,true);
 assert.ok(helpers.validate('2024-01-01','2026-11-04',now),'multi-year timeframes supported');
 assert.equal(helpers.validate('2010-01-01','2026-11-04',now),null,'bounded long-range queries');
-for(const selector of ['history-live','history-date','history-day','history-month','history-year'])
+for(const selector of ['history-live','history-picker'])
   assert.match(src,new RegExp('class="'+selector+'(?: selected)?"'),'toolbar '+selector);
-assert.match(src,/this\._loadHistory\(period\.start,period\.end,mode\)/,'quick shortcuts load immediately');
+assert.match(src,/history-prev history-nav/,'previous period button');
+assert.match(src,/history-next history-nav/,'next period button');
+assert.match(src,/this\._loadHistory\(next\.start,next\.end,next\.mode\)/,'period arrows load immediately');
 assert.match(src,/this\._getStatistics\(ids,range\.from-3600000,range\.from\+3600000,'hour',\{energy:'kWh'\}\)/,'read beginning including first hour');
 assert.match(src,/this\._getStatistics\(ids,range\.to-7200000,range\.to,'hour',\{energy:'kWh'\}\)/,'read recorded end boundary');
 assert.match(src,/this\._getStatistics\(ids,range\.to-3600000,range\.to,'5minute',\{energy:'kWh'\}\)/,'live periods use fine end stats');
@@ -28,6 +30,6 @@ assert.match(src,/sfcVerifiedBoundaryEnergy\(first,last,fine,range\.from,range\.
 assert.doesNotMatch(src,/type:'recorder\/statistic_during_period'/,'implicit-zero change endpoint no longer used');
 assert.match(src,/partialIds\.push\(id\)/,'show partial baseline information');
 assert.match(src,/overlay\.querySelector\('\.history-cancel'\)\.addEventListener\('click',\(\)=>overlay\.remove\(\)\)/,'dialog cancel');
-assert.match(src,/overlay\.remove\(\);this\._loadHistory\(from\.value,end\)/,'dialog loads after OK');
+assert.match(src,/overlay\.remove\(\);this\._loadHistory\(pending\.start,pending\.end,mode\)/,'dialog loads after selection');
 assert.match(src,/const validPeakRange=/,'quarter peak remains separate and bounded');
 console.log('Historical quick-day/month/year and cross-calendar range tests passed');

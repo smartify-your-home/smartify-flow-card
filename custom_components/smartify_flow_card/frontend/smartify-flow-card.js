@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.27';
+const SFC_VERSION = '0.6.28';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -147,6 +147,76 @@ function sfcValidatePeriod(start,end,now=new Date()){
   const cap=new Date(range.from);cap.setFullYear(cap.getFullYear()+5);
   if(range.to>+cap)return null;
   return {from:range.from,to:Math.min(range.to,+now),isToday:end===sfcLocalDate(now)};
+}
+
+
+/* HA-style period presets and navigation. Work with local calendar dates,
+   not 24-hour millisecond offsets, so DST does not move the selected day. */
+const SFC_PERIOD_PRESETS=[
+  ['today','Heute'],['yesterday','Gestern'],['week','Diese Woche'],
+  ['month','Dieser Monat'],['quarter','Dieses Quartal'],['year','Dieses Jahr'],
+  ['last7','Letzte 7 Tage'],['last30','Letzte 30 Tage'],
+  ['last365','Letzte 365 Tage'],['last12','Letzte 12 Monate']
+];
+function sfcAddDays(day,count){
+  const d=new Date(day+'T12:00:00');
+  d.setDate(d.getDate()+count);
+  return sfcLocalDate(d);
+}
+function sfcCalendarStart(y,m){return sfcLocalDate(new Date(y,m,1));}
+function sfcCalendarEnd(y,m){return sfcLocalDate(new Date(y,m+1,0));}
+function sfcPickerPreset(mode,now=new Date()){
+  const today=sfcLocalDate(now),y=now.getFullYear(),m=now.getMonth(),weekDay=(now.getDay()+6)%7;
+  let start=today;
+  if(mode==='yesterday')start=sfcAddDays(today,-1);
+  else if(mode==='week')start=sfcAddDays(today,-weekDay);
+  else if(mode==='month')start=sfcCalendarStart(y,m);
+  else if(mode==='quarter')start=sfcCalendarStart(y,Math.floor(m/3)*3);
+  else if(mode==='year')start=sfcCalendarStart(y,0);
+  else if(mode==='last7')start=sfcAddDays(today,-6);
+  else if(mode==='last30')start=sfcAddDays(today,-29);
+  else if(mode==='last365')start=sfcAddDays(today,-364);
+  else if(mode==='last12')start=sfcCalendarStart(y,m-11);
+  else if(mode!=='today'&&mode!=='day')return null;
+  return {start,end:mode==='yesterday'?start:today,mode};
+}
+function sfcPickerPage(range,mode,step,now=new Date()){
+  if(!range||![-1,1].includes(step))return null;
+  const today=sfcLocalDate(now),anchor=new Date(range.start+'T12:00:00');
+  if(!Number.isFinite(+anchor))return null;
+  const y=anchor.getFullYear(),m=anchor.getMonth();
+  let start,end,nextMode=mode;
+  if(mode==='year'||mode==='month'||mode==='quarter'||mode==='week'||mode==='last12'){
+    if(mode==='week'){
+      start=sfcAddDays(range.start,step*7);end=sfcAddDays(start,6);
+    }else if(mode==='last12'){
+      start=sfcCalendarStart(y,m+step*12);end=sfcCalendarEnd(y,m+step*12+11);
+    }else{
+      const months=mode==='year'?12:mode==='quarter'?3:1;
+      start=sfcCalendarStart(y,m+step*months);end=sfcCalendarEnd(y,m+step*months+months-1);
+    }
+  }else{
+    const a=range.start.split('-').map(Number),b=range.end.split('-').map(Number);
+    const days=Math.round((Date.UTC(b[0],b[1]-1,b[2])-Date.UTC(a[0],a[1]-1,a[2]))/86400000)+1;
+    if(!Number.isFinite(days)||days<1)return null;
+    start=sfcAddDays(range.start,step*days);end=sfcAddDays(range.end,step*days);
+    if(mode==='today'||mode==='yesterday')nextMode='day';
+  }
+  if(start>today)return null;
+  if(end>today)end=today;
+  if(!sfcValidatePeriod(start,end,now))return null;
+  return {start,end,mode:nextMode};
+}
+function sfcPickerLabel(range,mode){
+  if(!range)return 'Heute';
+  const a=new Date(range.start+'T12:00:00'),b=new Date(range.end+'T12:00:00');
+  if(mode==='year')return String(a.getFullYear());
+  if(mode==='quarter')return 'Q'+(Math.floor(a.getMonth()/3)+1)+' '+a.getFullYear();
+  if(mode==='month')return new Intl.DateTimeFormat('de-AT',{month:'long',year:'numeric'}).format(a);
+  const full=new Intl.DateTimeFormat('de-AT',{day:'numeric',month:'long',year:'numeric'});
+  if(range.start===range.end)return full.format(a);
+  const short=new Intl.DateTimeFormat('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+  return short.format(a)+' – '+short.format(b);
 }
 
 function sfcHistoryPoints(items,unit) {
@@ -470,20 +540,21 @@ class SmartifyFlowCard extends HTMLElement {
     return [...ids].filter(Boolean);
   }
   _historyStatus(){
-    const el=this.shadowRoot.querySelector('.history-status');
+    const root=this.shadowRoot,el=root.querySelector('.history-status');
     if(!el)return;
-    let label='';
-    if(this._historyMode==='history'){
-      label=this._historyLoading?'Lade historische Energiedaten …':this._historyError||
-        (this._historyRange?this._historyRange.start+' – '+this._historyRange.end:'')+
-        (this._historyData?.partialIds?.length?' · Teilweise erst ab erster verfügbarer Stundenstatistik':'');
-    }
-    el.textContent=label;
-    this.shadowRoot.querySelector('.history-live').classList.toggle('selected',this._historyMode==='live');
-    this.shadowRoot.querySelector('.history-date').classList.toggle('selected',this._historyMode==='history'&&!this._historyPreset);
-    for(const mode of ['day','month','year']){
-      this.shadowRoot.querySelector('.history-'+mode).classList.toggle('selected',this._historyMode==='history'&&this._historyPreset===mode);
-    }
+    const range=this._historyMode==='history'&&this._historyRange
+      ?this._historyRange:sfcPickerPreset('today');
+    const mode=this._historyMode==='history'?this._historyPreset:'today';
+    const pick=root.querySelector('.history-picker');
+    pick.querySelector('.history-picker-label').textContent=sfcPickerLabel(range,mode);
+    pick.classList.toggle('selected',this._historyMode==='history');
+    root.querySelector('.history-live').classList.toggle('selected',this._historyMode==='live');
+    root.querySelector('.history-prev').disabled=!sfcPickerPage(range,mode,-1);
+    root.querySelector('.history-next').disabled=!sfcPickerPage(range,mode,1);
+    el.textContent=this._historyMode==='history'
+      ?(this._historyLoading?'Lade historische Energiedaten …':this._historyError||
+         (this._historyData?.partialIds?.length?'Teilweise erst ab erster verfügbarer Stundenstatistik':''))
+      :'';
   }
   async _getStatistics(ids,from,to,period,units=null){
     if(!ids.length)return {};
@@ -684,29 +755,100 @@ class SmartifyFlowCard extends HTMLElement {
     if(this.shadowRoot.querySelector('.history-overlay'))return;
     const overlay=document.createElement('div');
     overlay.className='history-overlay';
-    overlay.innerHTML='<div class="history-dialog" role="dialog" aria-modal="true" aria-label="Datum auswählen">'+
-      '<h3 tabindex="-1">Datum auswählen</h3><label>Auswahl<select class="history-type"><option value="day">Einzelner Tag</option><option value="range">Zeitraum</option></select></label>'+
-      '<div class="history-inputs"><label>Von<input class="history-from" type="date"></label>'+
-      '<label class="history-end-field" hidden>Bis<input class="history-to" type="date"></label></div>'+
-      '<p>Tag oder Zeitraum auch über Monats- und Jahresgrenzen. Bis heute, maximal 5 Jahre. Viertelstundenmaximum nur bei vollständigen 5-Minuten-Statistiken.</p>'+
-      '<div class="history-buttons"><button class="history-cancel" type="button">Abbrechen</button><button class="history-ok" type="button">OK</button></div>'+
+    overlay.innerHTML='<div class="history-dialog" role="dialog" aria-modal="true" aria-label="Zeitraum auswählen">'+
+      '<div class="history-picker-content">'+
+        '<nav class="history-presets" aria-label="Schnellauswahl"></nav>'+
+        '<section class="history-calendar" aria-label="Kalender">'+
+          '<div class="history-calendar-heading"><button class="calendar-prev" type="button" aria-label="Vorheriger Monat"><ha-icon icon="mdi:chevron-left"></ha-icon></button>'+
+            '<h3 tabindex="-1" class="calendar-title"></h3>'+
+            '<button class="calendar-next" type="button" aria-label="Nächster Monat"><ha-icon icon="mdi:chevron-right"></ha-icon></button></div>'+
+          '<div class="history-weekdays" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>'+
+          '<div class="history-calendar-days" aria-label="Tage"></div>'+
+          '<div class="history-pending" role="status"></div>'+
+        '</section>'+
+      '</div>'+
+      '<div class="history-buttons"><button class="history-cancel" type="button">Abbrechen</button><button class="history-ok" type="button">Auswählen</button></div>'+
       '<div class="history-error" role="status"></div></div>';
-    const today=sfcLocalDate(new Date()),y=new Date();y.setDate(y.getDate()-1);
-    const type=overlay.querySelector('.history-type'),from=overlay.querySelector('.history-from'),to=overlay.querySelector('.history-to');
-    from.max=to.max=today;from.value=this._historyRange?.start||sfcLocalDate(y);to.value=this._historyRange?.end||from.value;
-    type.value=this._historyRange?.start!==this._historyRange?.end?'range':'day';
-    const sync=()=>overlay.querySelector('.history-end-field').hidden=type.value!=='range';
-    type.addEventListener('change',sync);sync();
+    const today=sfcLocalDate(new Date());
+    const range=this._historyMode==='history'&&this._historyRange?this._historyRange:sfcPickerPreset('today');
+    let pending={start:range.start,end:range.end},mode=this._historyMode==='history'?this._historyPreset:'today';
+    let selectingEnd=false;
+    const visibleDate=new Date((pending.end||pending.start)+'T12:00:00');
+    let year=visibleDate.getFullYear(),month=visibleDate.getMonth();
+    const presets=overlay.querySelector('.history-presets');
+    for(const [id,label] of SFC_PERIOD_PRESETS){
+      const btn=document.createElement('button');
+      btn.type='button';btn.className='history-preset';btn.dataset.mode=id;btn.textContent=label;
+      btn.addEventListener('click',()=>{
+        const period=sfcPickerPreset(id);
+        if(!period)return;
+        pending={start:period.start,end:period.end};mode=id;selectingEnd=false;
+        const d=new Date(today+'T12:00:00');year=d.getFullYear();month=d.getMonth();
+        render();
+      });
+      presets.appendChild(btn);
+    }
+    const days=overlay.querySelector('.history-calendar-days');
+    const render=()=>{
+      const first=new Date(year,month,1,12),offset=(first.getDay()+6)%7;
+      overlay.querySelector('.calendar-title').textContent=
+        new Intl.DateTimeFormat('de-AT',{month:'long',year:'numeric'}).format(first);
+      overlay.querySelector('.calendar-next').disabled=sfcCalendarStart(year,month+1)>today;
+      days.innerHTML='';
+      for(let i=0;i<42;i++){
+        const d=new Date(year,month,1-offset+i,12),date=sfcLocalDate(d);
+        const btn=document.createElement('button');btn.type='button';btn.className='calendar-day';
+        btn.textContent=String(d.getDate());btn.dataset.date=date;
+        btn.disabled=date>today;
+        btn.setAttribute('aria-label',new Intl.DateTimeFormat('de-AT',{dateStyle:'full'}).format(d));
+        if(d.getMonth()!==month)btn.classList.add('outside');
+        if(date===today)btn.classList.add('today');
+        if(date>=pending.start&&date<=pending.end)btn.classList.add('in-range');
+        if(date===pending.start)btn.classList.add('range-start');
+        if(date===pending.end)btn.classList.add('range-end');
+        if(date===pending.start||date===pending.end)btn.setAttribute('aria-pressed','true');
+        days.appendChild(btn);
+      }
+      for(const button of presets.querySelectorAll('.history-preset')){
+        button.classList.toggle('active',mode===button.dataset.mode);
+      }
+      const valid=sfcValidatePeriod(pending.start,pending.end);
+      overlay.querySelector('.history-ok').disabled=!valid;
+      const short=new Intl.DateTimeFormat('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+      const start=short.format(new Date(pending.start+'T12:00:00'));
+      const end=short.format(new Date(pending.end+'T12:00:00'));
+      overlay.querySelector('.history-pending').textContent=
+        (selectingEnd?'Von '+start+' – Bis auswählen':'Auswahl: '+start+(pending.start===pending.end?'':' – '+end));
+      overlay.querySelector('.history-error').textContent='';
+    };
+    days.addEventListener('click',(ev)=>{
+      const btn=ev.target.closest('button[data-date]');
+      if(!btn||btn.disabled)return;
+      const date=btn.dataset.date;
+      if(!selectingEnd){pending={start:date,end:date};selectingEnd=true;}
+      else if(date<pending.start){pending={start:date,end:date};selectingEnd=true;}
+      else{pending.end=date;selectingEnd=false;}
+      mode=null;render();
+    });
+    overlay.querySelector('.calendar-prev').addEventListener('click',()=>{
+      const d=new Date(year,month-1,1);year=d.getFullYear();month=d.getMonth();render();
+    });
+    overlay.querySelector('.calendar-next').addEventListener('click',()=>{
+      if(sfcCalendarStart(year,month+1)>today)return;
+      const d=new Date(year,month+1,1);year=d.getFullYear();month=d.getMonth();render();
+    });
     overlay.querySelector('.history-cancel').addEventListener('click',()=>overlay.remove());
     overlay.querySelector('.history-ok').addEventListener('click',()=>{
-      const end=type.value==='day'?from.value:to.value;
-      if(!sfcValidatePeriod(from.value,end)){
-        overlay.querySelector('.history-error').textContent='Bitte gültige Daten bis heute wählen (maximal 5 Jahre).';return;
+      if(!sfcValidatePeriod(pending.start,pending.end)){
+        overlay.querySelector('.history-error').textContent='Bitte einen gültigen Zeitraum bis heute wählen (maximal fünf Jahre).';return;
       }
-      overlay.remove();this._loadHistory(from.value,end);
+      overlay.remove();this._loadHistory(pending.start,pending.end,mode);
+    });
+    overlay.addEventListener('keydown',ev=>{
+      if(ev.key==='Escape'){ev.preventDefault();overlay.remove();}
     });
     this.shadowRoot.appendChild(overlay);
-    overlay.querySelector('h3').focus({preventScroll:true});
+    render();overlay.querySelector('h3').focus({preventScroll:true});
   }
   _initHistoryControls(){
     this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>{
@@ -714,12 +856,14 @@ class SmartifyFlowCard extends HTMLElement {
       this.shadowRoot.querySelector('.history-overlay')?.remove();
       this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
     });
-    this.shadowRoot.querySelector('.history-date').addEventListener('click',()=>this._openHistoryDialog());
-    for(const mode of ['day','month','year']){
-      this.shadowRoot.querySelector('.history-'+mode).addEventListener('click',()=>{
-        this.shadowRoot.querySelector('.history-overlay')?.remove();
-        const period=sfcQuickPeriod(mode);
-        this._loadHistory(period.start,period.end,mode);
+    this.shadowRoot.querySelector('.history-picker').addEventListener('click',()=>this._openHistoryDialog());
+    for(const [selector,step] of [['.history-prev',-1],['.history-next',1]]){
+      this.shadowRoot.querySelector(selector).addEventListener('click',()=>{
+        const range=this._historyMode==='history'&&this._historyRange
+          ?this._historyRange:sfcPickerPreset('today');
+        const mode=this._historyMode==='history'?this._historyPreset:'today';
+        const next=sfcPickerPage(range,mode,step);
+        if(next)this._loadHistory(next.start,next.end,next.mode);
       });
     }
     this._historyStatus();
@@ -864,20 +1008,55 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .wrap{max-width:${maxW}px;margin:0 auto}
 .card-version{position:absolute;right:9px;bottom:5px;color:var(--sf-sub);opacity:.62;font-size:10px;line-height:1;font-weight:400;letter-spacing:.01em;pointer-events:none;user-select:none}
 
-.history-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.history-toolbar button{font:inherit;min-height:36px;padding:7px 10px;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
+.history-toolbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.history-toolbar button{font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
+.history-live{padding:7px 13px}
 .history-toolbar button.selected{border-color:var(--primary-color);color:var(--primary-color);font-weight:700}
-.history-status{font-size:.75em;color:var(--sf-sub);overflow-wrap:anywhere}
-.history-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:12px;background:#0009}
-.history-dialog{box-sizing:border-box;width:min(100%,420px);max-height:90dvh;overflow:auto;padding:18px;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color);opacity:1;border:1px solid var(--divider-color);border-radius:var(--sf-r);box-shadow:0 10px 30px #0005}
-.history-dialog h3{margin:0 0 14px}.history-dialog label{display:grid;gap:4px;font-size:.85em}
-.history-dialog input,.history-dialog select{width:100%;min-width:0;min-height:44px;box-sizing:border-box;padding:9px;color:var(--primary-text-color);background:var(--secondary-background-color);border:1px solid var(--divider-color);border-radius:var(--sf-r);font:inherit}
-.history-end-field[hidden]{display:none}
-.history-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:12px;margin:12px 0}
-.history-dialog p,.history-error{font-size:.75em;color:var(--secondary-text-color)}
-.history-buttons{display:flex;gap:8px;justify-content:flex-end}
-.history-buttons button{padding:9px 14px;min-height:40px;font:inherit;cursor:pointer;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
-.history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff)}
+.history-toolbar .history-nav{width:36px;padding:0;border:0;background:transparent;flex:none}
+.history-toolbar .history-nav ha-icon{--mdc-icon-size:20px}
+.history-toolbar button:disabled,.history-dialog button:disabled{opacity:.35;cursor:default}
+.history-picker{padding:7px 11px;min-width:0;max-width:calc(100% - 132px)}
+.history-picker-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-weight:650}
+.history-picker ha-icon{--mdc-icon-size:18px;flex:none}
+.history-status{flex-basis:100%;font-size:.75em;color:var(--sf-sub);overflow-wrap:anywhere}
+.history-status:empty{display:none}
+.history-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:10px;background:#0009}
+.history-dialog{box-sizing:border-box;width:min(100%,560px);max-height:90dvh;display:flex;flex-direction:column;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:var(--sf-r);box-shadow:0 10px 30px #0005;overflow:hidden}
+.history-picker-content{display:grid;grid-template-columns:158px minmax(0,1fr);min-height:315px;overflow:auto}
+.history-presets{display:flex;flex-direction:column;gap:1px;padding:12px 7px;border-right:1px solid var(--divider-color)}
+.history-dialog button{font:inherit;cursor:pointer;color:var(--primary-text-color)}
+.history-preset{min-height:31px;padding:6px 10px;text-align:left;border:0;background:transparent;border-radius:5px;font-size:.85em}
+.history-preset:hover,.history-preset:focus-visible{background:var(--secondary-background-color)}
+.history-preset.active{background:var(--primary-color);color:var(--text-primary-color,#fff);font-weight:700}
+.history-calendar{padding:12px 14px 14px;min-width:0}
+.history-calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.history-calendar-heading h3{font-size:.95em;margin:0;text-align:center;outline-offset:3px}
+.history-calendar-heading button{display:flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:50%;height:36px;width:36px;flex:none}
+.history-calendar-heading ha-icon{--mdc-icon-size:22px}
+.history-weekdays,.history-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center}
+.history-weekdays{font-size:.76em;font-weight:700;color:var(--secondary-text-color);margin-bottom:7px}
+.history-weekdays span{padding:6px 0}
+.history-calendar-days .calendar-day{min-width:0;width:100%;aspect-ratio:1;min-height:30px;border:0;border-radius:4px;background:transparent;font-size:.84em;font-variant-numeric:tabular-nums}
+.calendar-day.outside{opacity:.42}
+.history-calendar-days .calendar-day.in-range{background:color-mix(in srgb,var(--primary-color) 26%,transparent);border-radius:0}
+.history-calendar-days .calendar-day.range-start,.history-calendar-days .calendar-day.range-end{background:var(--primary-color);color:var(--text-primary-color,#fff);border-radius:20px}
+.history-calendar-days .calendar-day.today:not(.range-start):not(.range-end){outline:1px solid var(--primary-color);outline-offset:-2px}
+.history-calendar-days .calendar-day:hover:not(:disabled),.history-calendar-heading button:hover:not(:disabled){outline:2px solid var(--primary-color)}
+.history-pending{min-height:16px;margin-top:13px;font-size:.75em;color:var(--secondary-text-color)}
+.history-buttons{padding:10px 12px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--divider-color)}
+.history-buttons button{padding:9px 14px;min-height:38px;cursor:pointer;border:0;border-radius:22px;background:transparent}
+.history-buttons .history-ok{background:var(--primary-color);color:var(--text-primary-color,#fff);font-weight:700}
+.history-error{font-size:.75em;color:var(--error-color,#c33);padding:0 12px}
+.history-error:empty{display:none}
+@media(max-width:520px){
+  .history-dialog{max-height:92dvh}
+  .history-picker-content{grid-template-columns:1fr;min-height:0}
+  .history-presets{flex-direction:row;overflow-x:auto;padding:8px;gap:3px;border-right:0;border-bottom:1px solid var(--divider-color);scrollbar-width:thin}
+  .history-preset{flex:0 0 auto;min-height:34px;padding:7px 9px}
+  .history-calendar{padding:10px}
+  .history-calendar-days .calendar-day{min-height:32px}
+  .history-picker{max-width:calc(100% - 128px)}
+}
 .house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 0 2px;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
 .house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.house-energy-description strong{overflow-wrap:anywhere}.house-energy-description small{overflow-wrap:anywhere}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap}
 .quarter-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding-top:8px;border-top:1px solid var(--divider-color);flex-wrap:wrap}
@@ -985,7 +1164,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 <ha-card>
   <div class="wrap">
   <div class="title" hidden></div>
-  <div class="history-toolbar"><button class="history-live selected" type="button">Live</button><button class="history-date" type="button">Datum</button><button class="history-day" type="button">Tag</button><button class="history-month" type="button">Monat</button><button class="history-year" type="button">Jahr</button><span class="history-status"></span></div>
+  <div class="history-toolbar"><button class="history-live selected" type="button">Live</button><button class="history-prev history-nav" type="button" aria-label="Vorheriger Zeitraum"><ha-icon icon="mdi:chevron-left"></ha-icon></button><button class="history-picker" type="button" aria-label="Zeitraum auswählen"><ha-icon icon="mdi:calendar-month"></ha-icon><span class="history-picker-label">Heute</span></button><button class="history-next history-nav" type="button" aria-label="Nächster Zeitraum"><ha-icon icon="mdi:chevron-right"></ha-icon></button><span class="history-status" role="status"></span></div>
   <div class="flow${this._c.layout === 'radial' ? ' radial' : ''}"><svg class="lines"><g class="pg"></g></svg><div class="col left"></div><div class="col right"></div></div>
   <div class="stats" hidden>
     <div class="ring"><svg viewBox="0 0 132 132">

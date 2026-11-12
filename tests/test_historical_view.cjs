@@ -26,7 +26,9 @@ assert.equal(h.peak(partial,start,start+one*6),null,'missing one quarter suppres
 assert.equal(h.bounds('2026-11-30','2026-11-31'),null,'invalid calendar date rejected');
 assert.equal(h.bounds('2026-11-04','2026-11-03'),null,'reversed interval rejected');
 assert.match(src,/class="history-live selected"/);
-assert.match(src,/class="history-date"/);
+assert.match(src,/class="history-picker"/);
+assert.match(src,/class="history-prev history-nav"/);
+assert.match(src,/class="history-next history-nav"/);
 assert.match(src,/overlay\.className='history-overlay'/);
 assert.match(src,/class="history-ok"/);
 assert.match(src,/class="history-cancel"/);

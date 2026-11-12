@@ -1,7 +1,14 @@
 name: Validate integration
 on:
-  push:
+  # Run once when a pull request is deliberately marked ready, not on each push.
+  # Further checks may be started manually in the Actions tab.
   pull_request:
+    types: [ready_for_review, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: flow-card-validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   tests:
     runs-on: ubuntu-24.04
@@ -34,6 +41,7 @@ jobs:
           node tests/test_historical_view.cjs
           node tests/test_historical_balance.cjs
           node tests/test_historical_periods.cjs
+          node tests/test_period_picker.cjs
           node tests/test_partial_consumer_history.cjs
           node tests/test_pv_plants.cjs
           node tests/test_history_flow_transitions.cjs

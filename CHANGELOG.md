@@ -1,3 +1,12 @@
+## v0.6.28 – Zeitraum-Picker wie in Home Assistant (2026-11-12)
+
+- Alte Schaltflächenleiste durch **Live**, navigierbare Zeitraum-Pfeile und einen beschrifteten Kalender-Picker ersetzt. Live-Werte und historische Leistungs-/Energieberechnung bleiben erhalten.
+- Kalender-Popup mit zehn vordefinierten Bereichen (Heute/Gestern, Woche/Monat/Quartal/Jahr, letzte 7/30/365 Tage/12 Monate), Monatswechsel und freier Einzeltag-/Zeitraumwahl. Auswahl erst nach **Auswählen** übernommen; **Abbrechen** und Escape verwerfen.
+- Pfeile springen passend zu Tag, Woche, Monat, Quartal, Jahr oder Länge des freien Zeitraums. Laufende Zeiträume enden maximal bei jetzt; Zukunftstage und Vorwärtsnavigation in die Zukunft sind gesperrt. Maximal fünf Jahre pro freier Auswahl.
+- Responsive Darstellung mit horizontal scrollbar angeordneten Schnellzeiträumen auf Smartphone-Breite, Theme-Farben und vorhandenen HA-Icons. Recorder, Messwerte, persistierte Monatsmaxima und Lovelace-Konfiguration unverändert.
+- UI- und Kalender-Regressionsprüfungen in Validate- und Release-Workflows ergänzt; `AGENTS.md`, README und Versionsangaben synchronisiert.
+- Nach Update erforderlicher Ressourcenneuladevorgang über `?v=0.6.28`; reale Browser-/iOS-Bedienung muss noch geprüft werden.
+
 ## v0.6.27 – Lesbare Beschriftung im Quellenbalken (2026-11-11)
 
 - Die Prozentbeschriftung im Quellenbalken („42 % PV“, „58 % Netz“) wählt jetzt automatisch Schwarz oder Weiß, je nachdem, was auf der tatsächlich angezeigten Hintergrundfarbe besser lesbar ist (WCAG-Kontrast). Bisher war der Netzanteil immer in Textfarbe mit hellem Schatten beschriftet und auf dunklen Gerätefarben (z. B. Violett) oder Grau schlecht lesbar.
