@@ -7,7 +7,7 @@ assert.ok(i>=0&&j>i);
 const p=vm.runInNewContext(src.slice(i,j)+'\n({preset:sfcPickerPreset,page:sfcPickerPage,label:sfcPickerLabel,validate:sfcValidatePeriod,presets:SFC_PERIOD_PRESETS})');
 const obj=v=>JSON.parse(JSON.stringify(v));
 const now=new Date(2026,10,12,18,0,0);
-assert.deepEqual(p.presets.map(x=>x[0]),['today','yesterday','week','month','quarter','year','last7','last30','last365','last12']);
+assert.deepEqual(obj(p.presets.map(x=>x[0])),['today','yesterday','week','month','quarter','year','last7','last30','last365','last12']);
 assert.deepEqual(obj(p.preset('today',now)),{start:'2026-11-12',end:'2026-11-12',mode:'today'});
 assert.deepEqual(obj(p.preset('yesterday',now)),{start:'2026-11-11',end:'2026-11-11',mode:'yesterday'});
 assert.deepEqual(obj(p.preset('week',now)),{start:'2026-11-09',end:'2026-11-12',mode:'week'});
