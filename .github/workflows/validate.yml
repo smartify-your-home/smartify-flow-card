@@ -1,7 +1,14 @@
 name: Validate integration
 on:
-  push:
+  # Run once when a pull request is deliberately marked ready, not on each push.
+  # Further checks may be started manually in the Actions tab.
   pull_request:
+    types: [ready_for_review, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: flow-card-validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   tests:
     runs-on: ubuntu-24.04
