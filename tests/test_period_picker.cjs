@@ -37,7 +37,7 @@ for(const value of ['history-picker','history-prev history-nav','history-next hi
   assert.ok(src.includes('class="'+value+'"'),'missing element '+value);
 assert.match(src,/history-picker-content\{display:grid/,'desktop side presets');
 assert.match(src,/@media\(max-width:520px\)/,'mobile preset scroller');
-assert.match(src,/if\(date>today\)/,'future dates disabled in calendar');
+assert.match(src,/btn\.disabled=date>today/,'future dates disabled in calendar');
 assert.match(src,/this\._loadHistory\(pending\.start,pending\.end,mode\)/,'confirm selection triggers history');
 assert.match(src,/this\._historyMode='live'/,'live stays intact');
 console.log('Period picker: 10 shortcuts, calendar page navigation, custom ranges, future guard and responsive UI passed');
