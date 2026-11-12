@@ -49,6 +49,7 @@ jobs:
           node tests/test_historical_view.cjs
           node tests/test_historical_balance.cjs
           node tests/test_historical_periods.cjs
+          node tests/test_period_picker.cjs
           node tests/test_partial_consumer_history.cjs
           node tests/test_pv_plants.cjs
           node tests/test_history_flow_transitions.cjs
