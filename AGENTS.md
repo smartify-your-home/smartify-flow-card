@@ -1,3 +1,9 @@
+## GitHub-Validate-Auslöser: Mail-Flut vermeiden (ab 12.11.2026) – verbindlich
+
+- `validate.yml` **nicht bei jedem Push oder PR-Synchronize** automatisch starten. Es läuft bei bewusstem **Ready for review** (und erneutem Öffnen) sowie manuell über `workflow_dispatch`. Pro Pull Request bleibt nur der neueste gleichzeitige Lauf aktiv (Concurrency + cancel-in-progress). `release.yml` testet weiterhin beim Versions-Update auf main, vor Veröffentlichung.
+- Entwicklungs-Commits vor dem Ready-Status ohne unnötige Validate-Läufe halten. Tests **nicht deaktivieren, löschen oder abschwächen**. Nach gewünschter Freigabe den vollständigen Check bewusst starten und bei Fehlern **beheben, nicht ignorieren**.
+- E-Mail-Benachrichtigungen sind GitHub-Kontoeinstellungen und können durch Repo-Workflow-Code allein nicht vollständig deaktiviert werden.
+
 ## Zeitraum-Picker ab v0.6.28 – verbindlich
 
 - Oben nur **Live** und die HA-orientierte Auswahl **Zurück / beschrifteter Kalender-Picker / Vorwärts**. Alte separate Buttons Datum/Tag/Monat/Jahr nicht wiederherstellen. Bestehende Live-Leistungsansicht unverändert.
