@@ -38,6 +38,8 @@ for(const value of ['history-picker','history-prev history-nav','history-next hi
 assert.match(src,/history-picker-content\{display:grid/,'desktop side presets');
 assert.match(src,/@media\(max-width:520px\)/,'mobile preset scroller');
 assert.match(src,/btn\.disabled=date>today/,'future dates disabled in calendar');
-assert.match(src,/this\._loadHistory\(pending\.start,pending\.end,mode\)/,'confirm selection triggers history');
+assert.match(src,/if\(period\)applySelection\(period.start,period.end,id\)/,'every preset commits immediately');
+assert.match(src,/if\(!rangeMode\)\{applySelection\(date,date,'day'\);return;\}/,'single calendar days commit immediately');
+assert.match(src,/if\(rangeMode&&!selectingEnd\)applySelection\(pending.start,pending.end,mode\)/,'free multiday ranges still require confirmation');
 assert.match(src,/this\._historyMode='live'/,'live stays intact');
 console.log('Period picker: 10 shortcuts, calendar page navigation, custom ranges, future guard and responsive UI passed');

@@ -1,3 +1,11 @@
+## v0.6.29 – Kompakte Energieübersicht und sofortige Datepicker-Kurzwahlen (2026-11-16)
+
+- Unter dem Zeitraum-Picker vier kompakte, linksbündig am Kartenrand ausgerichtete KPI-Zeilen in exakt dieser Reihenfolge: **Energiebedarf**, **Netzbezug**, **Netzbelieferung**, **PV Ertrag**. Keine eigenen Hintergründe oder separaten Karten. Home-Assistant-Theme-Farben, bestehende angemessene Textgrößen und kleinere `kWh`-Einheiten.
+- `Energiebedarf` nutzt ausschließlich die bestehende validierte Energiebilanz **PV + Netzbezug − Netzbelieferung + Akkuentladung − Akkuladung**; Akkuladung ist somit kein Hausverbrauch. Bei fehlenden Zählerdaten steht weiter „–“, keine erfundenen Werte.
+- Titel und Datum-Toolbar liegen nicht mehr im `max_width`-zentrierten Energieflusscontainer, sondern mit nur ca. 10 px Abstand am linken Kartenrand. Live-/Datepicker-Buttons und Pfeile sind etwas niedriger/kompakter.
+- **Alle zehn Kurzwahlen** im Datumspopup übernehmen den Zeitraum beim Klick sofort und schließen den Dialog. Ein normaler Klick auf einen Kalendertag übernimmt diesen ebenfalls unmittelbar. Für individuelle Mehrtagesbereiche gibt es nun den ausdrücklich aktivierbaren Modus **„Bereich wählen“**; Start/Ende und „Auswählen“ bleiben hier erhalten. Abbrechen und Escape ändern den Filter nicht.
+- Bestehende Live-/Recorder-Berechnungen, Zeitraumgrenzen, Pfeilnavigation, Historie, Statistik und Ressourcenregistrierung bleiben unverändert; neue DOM-Interaktionstests für alle Kurzwahlen, Tag und Mehrtagesbereich laufen in PR- und Release-CI.
+
 ## v0.6.28 – Zeitraum-Picker wie in Home Assistant (2026-11-12)
 
 - Alte Schaltflächenleiste durch **Live**, navigierbare Zeitraum-Pfeile und einen beschrifteten Kalender-Picker ersetzt. Live-Werte und historische Leistungs-/Energieberechnung bleiben erhalten.
