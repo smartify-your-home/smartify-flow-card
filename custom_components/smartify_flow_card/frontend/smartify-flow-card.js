@@ -768,6 +768,7 @@ class SmartifyFlowCard extends HTMLElement {
           '<div class="history-calendar-heading"><button class="calendar-prev" type="button" aria-label="Vorheriger Monat"><ha-icon icon="mdi:chevron-left"></ha-icon></button>'+
             '<h3 tabindex="-1" class="calendar-title"></h3>'+
             '<button class="calendar-next" type="button" aria-label="Nächster Monat"><ha-icon icon="mdi:chevron-right"></ha-icon></button></div>'+
+          '<div class="history-calendar-mode"><button class="history-range-mode" type="button" aria-pressed="false">Bereich wählen</button></div>'+
           '<div class="history-weekdays" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>'+
           '<div class="history-calendar-days" aria-label="Tage"></div>'+
           '<div class="history-pending" role="status"></div>'+
@@ -778,7 +779,15 @@ class SmartifyFlowCard extends HTMLElement {
     const today=sfcLocalDate(new Date());
     const range=this._historyMode==='history'&&this._historyRange?this._historyRange:sfcPickerPreset('today');
     let pending={start:range.start,end:range.end},mode=this._historyMode==='history'?this._historyPreset:'today';
-    let selectingEnd=false;
+    let selectingEnd=false,rangeMode=false;
+    const applySelection=(start,end,preset)=>{
+      if(!sfcValidatePeriod(start,end)){
+        overlay.querySelector('.history-error').textContent='Bitte einen gültigen Zeitraum bis heute wählen (maximal fünf Jahre).';
+        return;
+      }
+      overlay.remove();
+      this._loadHistory(start,end,preset);
+    };
     const visibleDate=new Date((pending.end||pending.start)+'T12:00:00');
     let year=visibleDate.getFullYear(),month=visibleDate.getMonth();
     const presets=overlay.querySelector('.history-presets');
@@ -787,10 +796,7 @@ class SmartifyFlowCard extends HTMLElement {
       btn.type='button';btn.className='history-preset';btn.dataset.mode=id;btn.textContent=label;
       btn.addEventListener('click',()=>{
         const period=sfcPickerPreset(id);
-        if(!period)return;
-        pending={start:period.start,end:period.end};mode=id;selectingEnd=false;
-        const d=new Date(today+'T12:00:00');year=d.getFullYear();month=d.getMonth();
-        render();
+        if(period)applySelection(period.start,period.end,id);
       });
       presets.appendChild(btn);
     }
@@ -819,22 +825,31 @@ class SmartifyFlowCard extends HTMLElement {
         button.classList.toggle('active',mode===button.dataset.mode);
       }
       const valid=sfcValidatePeriod(pending.start,pending.end);
-      overlay.querySelector('.history-ok').disabled=!valid;
+      const rangeButton=overlay.querySelector('.history-range-mode');
+      rangeButton.classList.toggle('active',rangeMode);
+      rangeButton.setAttribute('aria-pressed',String(rangeMode));
+      overlay.querySelector('.history-ok').hidden=!rangeMode;
+      overlay.querySelector('.history-ok').disabled=!rangeMode||selectingEnd||!valid;
       const short=new Intl.DateTimeFormat('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
       const start=short.format(new Date(pending.start+'T12:00:00'));
       const end=short.format(new Date(pending.end+'T12:00:00'));
-      overlay.querySelector('.history-pending').textContent=
-        (selectingEnd?'Von '+start+' – Bis auswählen':'Auswahl: '+start+(pending.start===pending.end?'':' – '+end));
+      overlay.querySelector('.history-pending').textContent=rangeMode
+        ?(selectingEnd?'Von '+start+' – Bis auswählen':'Auswahl: '+start+(pending.start===pending.end?'':' – '+end))
+        :'Einzelnen Tag antippen: sofort übernehmen';
       overlay.querySelector('.history-error').textContent='';
     };
     days.addEventListener('click',(ev)=>{
       const btn=ev.target.closest('button[data-date]');
       if(!btn||btn.disabled)return;
       const date=btn.dataset.date;
+      if(!rangeMode){applySelection(date,date,'day');return;}
       if(!selectingEnd){pending={start:date,end:date};selectingEnd=true;}
       else if(date<pending.start){pending={start:date,end:date};selectingEnd=true;}
       else{pending.end=date;selectingEnd=false;}
       mode=null;render();
+    });
+    overlay.querySelector('.history-range-mode').addEventListener('click',()=>{
+      rangeMode=!rangeMode;selectingEnd=false;render();
     });
     overlay.querySelector('.calendar-prev').addEventListener('click',()=>{
       const d=new Date(year,month-1,1);year=d.getFullYear();month=d.getMonth();render();
@@ -845,10 +860,7 @@ class SmartifyFlowCard extends HTMLElement {
     });
     overlay.querySelector('.history-cancel').addEventListener('click',()=>overlay.remove());
     overlay.querySelector('.history-ok').addEventListener('click',()=>{
-      if(!sfcValidatePeriod(pending.start,pending.end)){
-        overlay.querySelector('.history-error').textContent='Bitte einen gültigen Zeitraum bis heute wählen (maximal fünf Jahre).';return;
-      }
-      overlay.remove();this._loadHistory(pending.start,pending.end,mode);
+      if(rangeMode&&!selectingEnd)applySelection(pending.start,pending.end,mode);
     });
     overlay.addEventListener('keydown',ev=>{
       if(ev.key==='Escape'){ev.preventDefault();overlay.remove();}
