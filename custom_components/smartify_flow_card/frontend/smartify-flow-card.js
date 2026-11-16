@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.29';
+const SFC_VERSION = '0.6.30';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -1023,11 +1023,11 @@ class SmartifyFlowCard extends HTMLElement {
 }
 ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padding:16px 16px 27px;overflow:hidden;font-size:${scale}em;background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) ${100 - transparency}%, transparent);}
 .title{font-weight:800;font-size:1.05em;margin:0 0 8px;color:var(--primary-text-color);text-transform:uppercase;letter-spacing:.06em}
-.history-header{margin:0 -6px 12px;min-width:0}
-.period-summary{display:grid;gap:3px;max-width:440px;margin-top:0;color:var(--primary-text-color)}
-.period-summary-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:8px;min-width:0;background:none;border:0;padding:0}
+.history-header{margin:0 0 12px 2px;min-width:0}
+.period-summary{display:grid;gap:3px;width:100%;margin-top:0;padding-top:8px;border-top:1px solid var(--divider-color);color:var(--primary-text-color)}
+.period-summary-row{display:grid;grid-template-columns:minmax(0,145px) max-content;align-items:baseline;gap:10px;width:max-content;max-width:100%;min-width:0;background:none;border:0;padding:0}
 .period-summary-label{font-size:.85em;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
-.period-summary-value{font-size:1.15em;font-weight:800;line-height:1.2;white-space:nowrap;font-variant-numeric:tabular-nums}
+.period-summary-value{font-size:.85em;font-weight:600;line-height:1.3;white-space:nowrap;font-variant-numeric:tabular-nums}
 .period-summary-value .unit{font-size:.8em;font-weight:650;color:inherit}
 .wrap{max-width:${maxW}px;margin:0 auto}
 .card-version{position:absolute;right:9px;bottom:5px;color:var(--sf-sub);opacity:.62;font-size:10px;line-height:1;font-weight:400;letter-spacing:.01em;pointer-events:none;user-select:none}

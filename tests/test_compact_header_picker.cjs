@@ -20,8 +20,16 @@ assert.match(src,/houseEnergy: sfcHistoricalBalance\(this\._pvToday\(\)/,
   'live demand uses existing balance, excluding battery charge');
 assert.match(src,/houseEnergy:balance\?\.total\?\?null/,
   'historical demand uses existing validated balance');
-assert.match(src,/\.history-header\{margin:0 -6px 12px/,
-  'the header reaches toward the left card edge regardless of flow max_width');
+assert.match(src,/\.history-header\{margin:0 0 12px 2px/,
+  'the whole header is 8px right of the prior negative margin, independent of max_width');
+assert.match(src,/\.period-summary\{[^}]*border-top:1px solid var\(--divider-color\)/,
+  'one thin Home Assistant theme divider separates controls and energy rows');
+assert.match(src,/\.period-summary-row\{[^}]*grid-template-columns:minmax\(0,145px\) max-content;[^}]*gap:10px/,
+  'metric values use a compact shared column, not the distant right edge');
+assert.match(src,/\.period-summary-label\{font-size:\.85em;font-weight:600/,
+  'metric names retain established compact font size');
+assert.match(src,/\.period-summary-value\{font-size:\.85em;font-weight:600/,
+  'metric values now match names in size and weight');
 assert.match(src,/<div class="history-header">[\s\S]*?<\/div>\s*<div class="wrap">/,
   'date controls and summary live outside the centered flow wrapper');
 assert.match(src,/\.period-summary-row\{[^}]*background:none;border:0;padding:0/,

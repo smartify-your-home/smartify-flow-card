@@ -1,3 +1,11 @@
+## Flow Card v0.6.30 – Feinschliff der Energie-Kopfzeile
+
+- Der gesamte `.history-header` (Titel, Live/Picker/Pfeile, vier KPI-Zeilen) ist gegenüber v0.6.29 **um 8 px nach rechts** versetzt (Margin von `-6px` auf `2px`). Nicht das Energieflussdiagramm verschieben.
+- Eine einzige **feine Trennlinie** zwischen Datumsbuttons und KPI-Block: `border-top: 1px solid var(--divider-color)`, keine eigenständigen Hintergründe an den vier Zeilen. Theme-Schriftfarbe `var(--primary-text-color)` beibehalten.
+- Zahl und Name in allen vier KPI-Zeilen **gleich groß (0.85em) und gleich stark (600)**; `kWh` bleibt als kleineres `span.unit` (0.8em). Werte in einer gemeinsamen kompakten zweiten Spalte (145px Label + 10px Abstand), nicht weit rechtsbündig auf Kartenbreite.
+- Exakte Reihenfolge/Benennung, Batterie-Bilanz und Auto-Apply-Verhalten aller zehn Datepicker-Kurzwahlen aus v0.6.29 unverändert lassen. Die vorhandenen Regressionen mit neuen Abstands-/Linien-/Schriftprüfungen weiterführen.
+- Version in Manifest, JS, README, CHANGELOG und Ressourcen-URL synchron auf `0.6.30`; PR-Validierung einmal durch Ready-for-Review starten, erst nach Grün mergen und per Release-Workflow veröffentlichen.
+
 ## Flow Card v0.6.29 – kompakter Kopfbereich, Energieübersicht und sofortiger Datepicker
 
 - Im Kartenkopf (außerhalb des auf `max_width` begrenzten und zentrierten Energieflussdiagramms) zuerst Titel und Live/Zurück/Datum/Vorwärts, dann die vier zeilenweisen kWh-Werte **Energiebedarf**, **Netzbezug**, **Netzbelieferung**, **PV Ertrag** in exakt dieser Reihenfolge. An Kartenrand links rücken, keine eigenen Hintergründe, ausschließlich HA-Theme-Farben, vorhandene kompakte Statistikhierarchie und kleinere kWh-Einheit.
