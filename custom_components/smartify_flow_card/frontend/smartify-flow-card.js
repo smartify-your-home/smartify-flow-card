@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.28';
+const SFC_VERSION = '0.6.29';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -290,6 +290,12 @@ function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recor
   // Negative residual indicates overlapping/incorrect meters, not an unrecorded load.
   if (total < -0.001 || difference < -0.001) return null;
   return { total: Math.max(0,total), rest: Math.max(0,difference) };
+}
+// Selected-period top-line energy values. House demand is already calculated
+// as PV + import - export + battery discharge - battery charge.
+function sfcHeaderMetrics(model) {
+  return [['demand',model?.houseEnergy],['import',model?.impT],
+          ['export',model?.expT],['pv',model?.pvT]];
 }
 function sfcEnergyDelta(points,from,to) {
   // Full cumulative-energy boundaries only; do not manufacture estimates.
@@ -1004,18 +1010,24 @@ class SmartifyFlowCard extends HTMLElement {
   --sf-gap:var(--smartify-flow-gap,14px);
 }
 ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border-radius,12px);padding:16px 16px 27px;overflow:hidden;font-size:${scale}em;background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) ${100 - transparency}%, transparent);}
-.title{font-weight:800;font-size:1.05em;margin:0 0 12px 2px;color:var(--sf-txt);text-transform:uppercase;letter-spacing:.06em}
+.title{font-weight:800;font-size:1.05em;margin:0 0 8px;color:var(--primary-text-color);text-transform:uppercase;letter-spacing:.06em}
+.history-header{margin:0 -6px 12px;min-width:0}
+.period-summary{display:grid;gap:3px;max-width:440px;margin-top:0;color:var(--primary-text-color)}
+.period-summary-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:8px;min-width:0;background:none;border:0;padding:0}
+.period-summary-label{font-size:.85em;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.period-summary-value{font-size:1.15em;font-weight:800;line-height:1.2;white-space:nowrap;font-variant-numeric:tabular-nums}
+.period-summary-value .unit{font-size:.8em;font-weight:650;color:inherit}
 .wrap{max-width:${maxW}px;margin:0 auto}
 .card-version{position:absolute;right:9px;bottom:5px;color:var(--sf-sub);opacity:.62;font-size:10px;line-height:1;font-weight:400;letter-spacing:.01em;pointer-events:none;user-select:none}
 
-.history-toolbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.history-toolbar button{font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
-.history-live{padding:7px 13px}
+.history-toolbar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.history-toolbar button{font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;border:1px solid var(--divider-color);border-radius:var(--sf-r);background:var(--secondary-background-color);color:var(--primary-text-color)}
+.history-live{padding:4px 10px}
 .history-toolbar button.selected{border-color:var(--primary-color);color:var(--primary-color);font-weight:700}
-.history-toolbar .history-nav{width:36px;padding:0;border:0;background:transparent;flex:none}
+.history-toolbar .history-nav{width:30px;padding:0;border:0;background:transparent;flex:none}
 .history-toolbar .history-nav ha-icon{--mdc-icon-size:20px}
 .history-toolbar button:disabled,.history-dialog button:disabled{opacity:.35;cursor:default}
-.history-picker{padding:7px 11px;min-width:0;max-width:calc(100% - 132px)}
+.history-picker{padding:4px 9px;min-width:0;max-width:calc(100% - 112px)}
 .history-picker-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-weight:650}
 .history-picker ha-icon{--mdc-icon-size:18px;flex:none}
 .history-status{flex-basis:100%;font-size:.75em;color:var(--sf-sub);overflow-wrap:anywhere}
@@ -1033,6 +1045,9 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .history-calendar-heading h3{font-size:.95em;margin:0;text-align:center;outline-offset:3px}
 .history-calendar-heading button{display:flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:50%;height:36px;width:36px;flex:none}
 .history-calendar-heading ha-icon{--mdc-icon-size:22px}
+.history-calendar-mode{display:flex;justify-content:flex-end;margin:-3px 0 8px}
+.history-dialog .history-range-mode{background:transparent;border:1px solid var(--divider-color);padding:5px 9px;border-radius:var(--sf-r);font-size:.78em;min-height:29px}
+.history-dialog .history-range-mode.active{border-color:var(--primary-color);color:var(--primary-color);font-weight:700}
 .history-weekdays,.history-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center}
 .history-weekdays{font-size:.76em;font-weight:700;color:var(--secondary-text-color);margin-bottom:7px}
 .history-weekdays span{padding:6px 0}
@@ -1055,7 +1070,7 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
   .history-preset{flex:0 0 auto;min-height:34px;padding:7px 9px}
   .history-calendar{padding:10px}
   .history-calendar-days .calendar-day{min-height:32px}
-  .history-picker{max-width:calc(100% - 128px)}
+  .history-picker{max-width:calc(100% - 110px)}
 }
 .house-energy-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 0 2px;border-top:1px solid var(--divider-color);color:var(--sf-txt)}
 .house-energy-row ha-icon{flex:none}.house-energy-description{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.house-energy-description strong{overflow-wrap:anywhere}.house-energy-description small{overflow-wrap:anywhere}.house-energy-value{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -1162,9 +1177,17 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
 @media (max-width:480px){.flow{grid-template-columns:minmax(0,1fr) minmax(36px,.4fr) minmax(0,1fr)}.val{font-size:1.2em}.stats{grid-template-columns:1fr}.ring{margin:0 auto}}
 </style>
 <ha-card>
+  <div class="history-header">
+    <div class="title" hidden></div>
+    <div class="history-toolbar"><button class="history-live selected" type="button">Live</button><button class="history-prev history-nav" type="button" aria-label="Vorheriger Zeitraum"><ha-icon icon="mdi:chevron-left"></ha-icon></button><button class="history-picker" type="button" aria-label="Zeitraum auswählen"><ha-icon icon="mdi:calendar-month"></ha-icon><span class="history-picker-label">Heute</span></button><button class="history-next history-nav" type="button" aria-label="Nächster Zeitraum"><ha-icon icon="mdi:chevron-right"></ha-icon></button><span class="history-status" role="status"></span></div>
+    <div class="period-summary" aria-label="Energiewerte für den ausgewählten Zeitraum">
+      <div class="period-summary-row" data-metric="demand"><span class="period-summary-label">Energiebedarf</span><span class="period-summary-value">–</span></div>
+      <div class="period-summary-row" data-metric="import"><span class="period-summary-label">Netzbezug</span><span class="period-summary-value">–</span></div>
+      <div class="period-summary-row" data-metric="export"><span class="period-summary-label">Netzbelieferung</span><span class="period-summary-value">–</span></div>
+      <div class="period-summary-row" data-metric="pv"><span class="period-summary-label">PV Ertrag</span><span class="period-summary-value">–</span></div>
+    </div>
+  </div>
   <div class="wrap">
-  <div class="title" hidden></div>
-  <div class="history-toolbar"><button class="history-live selected" type="button">Live</button><button class="history-prev history-nav" type="button" aria-label="Vorheriger Zeitraum"><ha-icon icon="mdi:chevron-left"></ha-icon></button><button class="history-picker" type="button" aria-label="Zeitraum auswählen"><ha-icon icon="mdi:calendar-month"></ha-icon><span class="history-picker-label">Heute</span></button><button class="history-next history-nav" type="button" aria-label="Nächster Zeitraum"><ha-icon icon="mdi:chevron-right"></ha-icon></button><span class="history-status" role="status"></span></div>
   <div class="flow${this._c.layout === 'radial' ? ' radial' : ''}"><svg class="lines"><g class="pg"></g></svg><div class="col left"></div><div class="col right"></div></div>
   <div class="stats" hidden>
     <div class="ring"><svg viewBox="0 0 132 132">
@@ -1467,6 +1490,7 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         n.energy==null?'Keine Energiedaten':(n.historyNote||'Modellierte Quellenanteile'),'','',null);
       else set(n,this._fmtW(n.w),n.energy!=null?this._fmtKwh(n.energy)+' kWh heute':'','','',null);
     }
+    this._updateHeaderSummary(m);
     this._updateStats(m);
     this._scheduleDraw();
   }
@@ -1527,6 +1551,24 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     }
     history.innerHTML=rows.length?rows.join(''):'Noch keine abgeschlossenen Monate in diesem Jahr';
     root.querySelector('.monthly-history').hidden=!rows.length;
+  }
+
+  _updateHeaderSummary(m) {
+    // Always visible, including when the optional detailed stats are hidden.
+    for (const [key, energy] of sfcHeaderMetrics(m)) {
+      const valueEl = this.shadowRoot.querySelector(`.period-summary-row[data-metric="${key}"] .period-summary-value`);
+      if (!valueEl) continue;
+      const number = energy != null && Number.isFinite(energy) && energy >= 0
+        ? energy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}) : '–';
+      if (valueEl.dataset.value === number) continue;
+      valueEl.dataset.value = number;
+      if (number === '–') valueEl.textContent = '–';
+      else {
+        const unit = document.createElement('span');
+        unit.className = 'unit';unit.textContent = 'kWh';
+        valueEl.replaceChildren(document.createTextNode(number+' '),unit);
+      }
+    }
   }
 
   _updateStats(m) {
