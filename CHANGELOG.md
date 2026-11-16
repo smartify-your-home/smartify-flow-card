@@ -1,3 +1,11 @@
+## v0.6.30 – Feinabstimmung der Kopfzeile (2026-11-16)
+
+- Gesamten Kopfbereich (Titel, Live-/Datumsnavigation, vier Energiekennzahlen) gegenüber v0.6.29 um **8 px nach rechts** versetzt; das Energieflussdiagramm bleibt unverändert.
+- Die vier Energiewerte stehen jetzt in einer **kompakten zweiten Spalte direkt neben den Namen**, statt am rechten Kartenrand. Gleiche Schriftgröße und -stärke wie die Bezeichnungen (`0.85em`, `600`); kleinere `kWh`-Einheit bleibt.
+- Eine einzige dünne, mit `var(--divider-color)` dem **Home-Assistant-Theme** folgende Trennlinie zwischen Datumsauswahl und Kennzahlen ergänzt. Keine eigenen Hintergründe der Energiezeilen.
+- Automatische Übernahme aller zehn Kurzwahlen, einzelner Tage, freie Mehrtagesauswahl, Messwerte, Batterie-/PV-Berechnung und Quellenanzeige unverändert.
+- Layout-Regression in `tests/test_compact_header_picker.cjs` erweitert; alle bestehenden Tests und Release-Prüfungen bleiben aktiv.
+
 ## v0.6.29 – Kompakte Energieübersicht und sofortige Datepicker-Kurzwahlen (2026-11-16)
 
 - Unter dem Zeitraum-Picker vier kompakte, linksbündig am Kartenrand ausgerichtete KPI-Zeilen in exakt dieser Reihenfolge: **Energiebedarf**, **Netzbezug**, **Netzbelieferung**, **PV Ertrag**. Keine eigenen Hintergründe oder separaten Karten. Home-Assistant-Theme-Farben, bestehende angemessene Textgrößen und kleinere `kWh`-Einheiten.
