@@ -1,3 +1,10 @@
+## Flow Card v0.6.29 – kompakter Kopfbereich, Energieübersicht und sofortiger Datepicker
+
+- Im Kartenkopf (außerhalb des auf `max_width` begrenzten und zentrierten Energieflussdiagramms) zuerst Titel und Live/Zurück/Datum/Vorwärts, dann die vier zeilenweisen kWh-Werte **Energiebedarf**, **Netzbezug**, **Netzbelieferung**, **PV Ertrag** in exakt dieser Reihenfolge. An Kartenrand links rücken, keine eigenen Hintergründe, ausschließlich HA-Theme-Farben, vorhandene kompakte Statistikhierarchie und kleinere kWh-Einheit.
+- Energiebedarf ausschließlich aus der vorhandenen `sfcHistoricalBalance`: PV + Netzbezug − Netzbelieferung + Akkuentladung − Akkuladung. Keine Akkuladung zum Hausverbrauch addieren, keine Nullwerte bei fehlenden Zählern erfinden; für Live/History jeweils den vom bestehenden Modell ausgewählten Zeitraum benutzen.
+- **Sämtliche zehn Kurzwahlen** müssen bei Klick sofort anwenden und Dialog schließen; Kalendereinzeltag bei einem Klick ebenso. Freie Mehrtagesauswahl über explizites **„Bereich wählen“** (Start/Ende, dann „Auswählen“) erhalten. Abbrechen/Escape verwerfen, 5-Jahres-/Zukunfts-/DST-Grenzen und Navigationspfeile beibehalten. Diese Vorgabe ersetzt nur die ältere Bestätigungspflicht für Kurzwahlen/Einzeltage aus dem nachstehenden Abschnitt zu v0.6.28.
+- Beide Workflows müssen `tests/test_compact_header_picker.cjs` und die vollständigen bisherigen Tests laufen lassen. Versions-Metadaten, README, CHANGELOG, `?v=`-URL und GitHub Release/Tag synchron; keine CI-Mail-Flut durch Push-/Synchronize-Trigger.
+
 ## GitHub-Validate-Auslöser: Mail-Flut vermeiden (ab 12.11.2026) – verbindlich
 
 - `validate.yml` **nicht bei jedem Push oder PR-Synchronize** automatisch starten. Es läuft bei bewusstem **Ready for review** (und erneutem Öffnen) sowie manuell über `workflow_dispatch`. Pro Pull Request bleibt nur der neueste gleichzeitige Lauf aktiv (Concurrency + cancel-in-progress). `release.yml` testet weiterhin beim Versions-Update auf main, vor Veröffentlichung.
