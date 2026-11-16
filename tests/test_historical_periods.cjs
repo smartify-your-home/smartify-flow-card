@@ -30,6 +30,8 @@ assert.match(src,/sfcVerifiedBoundaryEnergy\(first,last,fine,range\.from,range\.
 assert.doesNotMatch(src,/type:'recorder\/statistic_during_period'/,'implicit-zero change endpoint no longer used');
 assert.match(src,/partialIds\.push\(id\)/,'show partial baseline information');
 assert.match(src,/overlay\.querySelector\('\.history-cancel'\)\.addEventListener\('click',\(\)=>overlay\.remove\(\)\)/,'dialog cancel');
-assert.match(src,/overlay\.remove\(\);this\._loadHistory\(pending\.start,pending\.end,mode\)/,'dialog loads after selection');
+assert.match(src,/this\._loadHistory\(start,end,preset\)/,'validated popup selection loads historical interval');
+assert.match(src,/if\(period\)applySelection\(period.start,period.end,id\)/,'quick periods load immediately');
+assert.match(src,/if\(rangeMode&&!selectingEnd\)applySelection\(pending.start,pending.end,mode\)/,'custom multiday range still needs explicit confirmation');
 assert.match(src,/const validPeakRange=/,'quarter peak remains separate and bounded');
 console.log('Historical quick-day/month/year and cross-calendar range tests passed');
