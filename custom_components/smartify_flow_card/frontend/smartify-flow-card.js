@@ -293,9 +293,14 @@ function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recor
 }
 // Selected-period top-line energy values. House demand is already calculated
 // as PV + import - export + battery discharge - battery charge.
-function sfcHeaderMetrics(model) {
-  return [['demand',model?.houseEnergy],['import',model?.impT],
-          ['export',model?.expT],['pv',model?.pvT]];
+function sfcHeaderMetrics(model, incomplete=[]) {
+  // Header values are labelled as totals for the selected interval. A meter
+  // with an incomplete START must not masquerade as a full-period total here.
+  const excluded=new Set(incomplete);
+  return [['demand',excluded.has('demand')?null:model?.houseEnergy],
+          ['import',excluded.has('import')?null:model?.impT],
+          ['export',excluded.has('export')?null:model?.expT],
+          ['pv',excluded.has('pv')?null:model?.pvT]];
 }
 function sfcEnergyDelta(points,from,to) {
   // Full cumulative-energy boundaries only; do not manufacture estimates.
@@ -1581,8 +1586,24 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
   }
 
   _updateHeaderSummary(m) {
+    // A late-starting Recorder series may still be shown in a source tile as a
+    // labelled partial interval. But the compact header claims complete totals
+    // for the selected dates; suppress metrics with incomplete start coverage.
+    const incomplete=[];
+    if(m?.historical){
+      const partial=new Set(this._historyData?.partialIds||[]);
+      const pv= this._pvPlants().some(p=>partial.has(p.energy_total));
+      const imp=partial.has(this._c.grid.import_total);
+      const exp=partial.has(this._c.grid.export_total);
+      const battery=!!this._c.battery?.power&&
+        (partial.has(this._c.battery.charge_total)||partial.has(this._c.battery.discharge_total));
+      if(pv)incomplete.push('pv');
+      if(imp)incomplete.push('import');
+      if(exp)incomplete.push('export');
+      if(pv||imp||exp||battery)incomplete.push('demand');
+    }
     // Always visible, including when the optional detailed stats are hidden.
-    for (const [key, energy] of sfcHeaderMetrics(m)) {
+    for (const [key, energy] of sfcHeaderMetrics(m,incomplete)) {
       const valueEl = this.shadowRoot.querySelector(`.period-summary-row[data-metric="${key}"] .period-summary-value`);
       if (!valueEl) continue;
       const number = energy != null && Number.isFinite(energy) && energy >= 0
