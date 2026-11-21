@@ -1,3 +1,10 @@
+## v0.6.32 – Historische Tageswerte beim Zurückblättern (2026-11-21)
+
+- **Live → Pfeil links → gestern → weitere Tage:** Zähler mit nächtlichen Messlücken (z. B. PV-Wechselrichter ohne Mitternachts-Statistik) erscheinen wieder, sofern tatsächlich erfasste Zählerstände den Tagesertrag belegen.
+- Bei problematischen Zählern wird nur für den **einzelnen historischen Tag** ein zusätzliches begrenztes Stundenfenster gelesen. Statt Daten zu erfinden oder einen kompletten Tag als `–` auszublenden, wird die tatsächliche Differenz zweier Messwerte gezeigt.
+- Werte, die nicht an beiden exakten Tagesgrenzen belegt sind, werden im Kopf sichtbar **„· Teil“** gekennzeichnet; der Hinweis gilt auch für einen daraus abgeleiteten Energiebedarf. Vollständig erfasste Zähler bleiben unmarkiert. Ohne zwei belastbare Messwerte bleibt `–`.
+- Fehler der optionalen Tagesnachsuche dürfen nicht die übrigen Messwerte entfernen. Vorhandene Temperatur-/Verbraucher-/15-Minuten-Logik, Datenquellen und Datepicker bleiben unverändert.
+- Neue Regression `tests/test_live_back_arrow.cjs` für drei aufeinanderfolgende Tage sowie aktualisierter Teilwert-Test in Validate und Release; kein automatischer CI-Lauf bei jedem Push.
 ## v0.6.31 – Korrekte Kennzahlen zum ausgewählten Zeitraum (2026-11-21)
 
 - Die vier Kopfzeilen (Energiebedarf, Netzbezug, Netzbelieferung, PV Ertrag) werden sofort geleert, wenn eine neue historische Zeitspanne gewählt wird, statt irreführend Werte des vorherigen Zeitraums weiter anzuzeigen. Auch Recorder-Fehler lassen keine alten Zahlen stehen.

@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.31';
+const SFC_VERSION = '0.6.32';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -271,6 +271,24 @@ function sfcVerifiedBoundaryEnergy(startHourly,endHourly,endFine,from,to) {
   return {kwh:Math.max(0,lastValue-initial),partialStart:!exactStart,
     partialFrom:!exactStart?measuredFrom:null,through:lastTime};
 }
+// Short bounded recovery for an archived single day. Inverters can stop
+// publishing at night, so there may be no hourly statistic at midnight.
+// Only subtract two actually recorded cumulative sums. Mark non-exact edges.
+function sfcMeasuredDaySlice(points,from,to){
+  const duration=3600000;
+  const samples=[...(points||new Map())]
+    .filter(([t,value])=>Number.isFinite(t)&&Number.isFinite(value)&&t+duration<=to)
+    .sort((a,b)=>a[0]-b[0]);
+  const before=samples.filter(([t])=>t+duration<=from).at(-1);
+  const inside=samples.filter(([t])=>t+duration>from);
+  if(!inside.length)return null;
+  const first=before||inside[0],last=inside.at(-1);
+  const measuredFrom=first[0]+duration,measuredTo=last[0]+duration;
+  if(measuredTo<=measuredFrom||last[1]<first[1]-0.001)return null;
+  return {kwh:Math.max(0,last[1]-first[1]),partialStart:measuredFrom!==from,
+    partialFrom:measuredFrom,partialEnd:measuredTo!==to,through:measuredTo};
+}
+
 function sfcPvPlants(solar) {
   if(Array.isArray(solar?.plants))return solar.plants.filter(p=>p&&(p.power||p.energy_total));
   return solar?.power||solar?.energy_total?[{name:solar.name||'PV-Anlage 1',power:solar.power||'',energy_total:solar.energy_total||''}]:[];
@@ -565,8 +583,8 @@ class SmartifyFlowCard extends HTMLElement {
     el.textContent=this._historyMode==='history'
       ?(this._historyLoading?'Lade historische Energiedaten …':this._historyError||
          [
-           this._historyData?.missingEndIds?.length?'Unvollständige Recorder-Daten am Zeitraumende':'',
-           this._historyData?.partialIds?.length?'Teilweise erst ab erster verfügbarer Stundenstatistik':''
+           this._historyData?.missingEndIds?.length?'Teilzeitraum: letzte Messung vor Tagesende':'',
+           this._historyData?.partialIds?.length?'Teilzeitraum: erste Messung nicht am Tagesanfang':''
          ].filter(Boolean).join(' · '))
       :'';
   }
@@ -606,7 +624,7 @@ class SmartifyFlowCard extends HTMLElement {
           ?this._getStatistics(ids,range.to-3600000,range.to,'5minute',{energy:'kWh'}).catch(()=>({}))
           :Promise.resolve({})
       ]);
-      const energy={},partialIds=[],partialFrom={},lastTimes=[],missingEndIds=[];
+      const energy={},partialIds=[],partialFrom={},lastTimes=[],missingEndIds=[],partialUntil={};
       const pvIds=new Set(this._pvPlants().map(p=>p.energy_total).filter(Boolean));
       const missingStart=[];
       for(const id of ids){
@@ -619,7 +637,7 @@ class SmartifyFlowCard extends HTMLElement {
         // For a finished calendar period every counter must actually reach the
         // chosen end boundary. Never present the previous hour(s) as a full day.
         const incompleteEnd=!!value&&!range.isToday&&value.through!==range.to;
-        if(incompleteEnd)missingEndIds.push(id);
+        if(incompleteEnd){missingEndIds.push(id);partialUntil[id]=value.through;}
         if(value&&!incompleteEnd){
           energy[id]=value.kwh;
           if(value.partialStart){
@@ -636,6 +654,7 @@ class SmartifyFlowCard extends HTMLElement {
         }
       }
       if(missingStart.length){
+        try{
         // One batched daily lookup to locate true first recorded days. Don't
         // download every hourly statistic for the entire selected year.
         const days=await this._getStatistics(missingStart,range.from,range.to,'day',{energy:'kWh'});
@@ -673,6 +692,42 @@ class SmartifyFlowCard extends HTMLElement {
           partialFrom[item.id]=item.value.partialFrom;
           if(item.value.through)lastTimes.push(item.value.through);
         }
+        }catch(_){ /* Daily lookup is optional; try bounded hourly recovery. */ }
+      }
+      // The initial 2h boundary queries miss meters that sleep overnight.
+      // Only for a single past day, request a bounded set of hourly buckets
+      // around both boundaries, and only for affected counters.
+      const archivedDay=!range.isToday&&range.to-range.from<=26*3600000;
+      const affected=archivedDay?ids.filter(id=>
+        energy[id]==null||partialIds.includes(id)||missingEndIds.includes(id)):[];
+      if(affected.length){
+        try{
+          const around=await this._getStatistics(
+            affected,range.from-14*3600000,range.to,'hour',{energy:'kWh'});
+          for(const id of affected){
+            const value=sfcMeasuredDaySlice(sfcHistoryPoints(around[id],'kWh'),range.from,range.to);
+            if(!value)continue; // No two genuine observations: still unknown.
+            energy[id]=value.kwh;
+            const p=partialIds.indexOf(id);
+            if(value.partialStart){
+              if(p<0)partialIds.push(id);
+              partialFrom[id]=value.partialFrom;
+            }else{
+              if(p>=0)partialIds.splice(p,1);
+              delete partialFrom[id];
+            }
+            const e=missingEndIds.indexOf(id);
+            if(value.partialEnd){
+              if(e<0)missingEndIds.push(id);
+              partialUntil[id]=value.through;
+            }else{
+              if(e>=0)missingEndIds.splice(e,1);
+              delete partialUntil[id];
+            }
+          }
+        }catch(_){
+          // Optional fallback must not invalidate already verified counters.
+        }
       }
       const peakId=this._c.grid.import_total;
       let peak=null;
@@ -691,7 +746,7 @@ class SmartifyFlowCard extends HTMLElement {
         }catch(_){peak=null;}
       }
       if(seq!==this._historySeq||this._historyMode!=='history')return;
-      this._historyData={energy,peak,partialIds,partialFrom,lastTimes,missingEndIds};
+      this._historyData={energy,peak,partialIds,partialFrom,lastTimes,missingEndIds,partialUntil};
       this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),data:this._historyData});
       while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
     }catch(_){
@@ -716,7 +771,11 @@ class SmartifyFlowCard extends HTMLElement {
       const kwh=get(this._energyId(id)),name=this._name(id);
       if(kwh==null){missing.push(id);continue;}
       const partialTs=this._historyData.partialFrom?.[this._energyId(id)];
-      const partialNote=partialTs!=null?'Teilzeitraum · Daten ab '+new Date(partialTs).toLocaleDateString('de-AT'):null;
+      const partialEnd=this._historyData.partialUntil?.[this._energyId(id)];
+      const partialNote=[
+        partialTs!=null?'Teilzeitraum · Daten ab '+new Date(partialTs).toLocaleString('de-AT'):null,
+        partialEnd!=null?'Teilzeitraum · Messung bis '+new Date(partialEnd).toLocaleString('de-AT'):null
+      ].filter(Boolean).join(' · ')||null;
       all.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000,historyNote:partialNote});
     }
     all.sort((x,y)=>y.energy-x.energy||String(x.key).localeCompare(String(y.key)));
@@ -1045,6 +1104,7 @@ ha-card{position:relative;font-family:inherit;border-radius:var(--ha-card-border
 .period-summary-label{font-size:.85em;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
 .period-summary-value{font-size:.85em;font-weight:600;line-height:1.3;white-space:nowrap;font-variant-numeric:tabular-nums}
 .period-summary-value .unit{font-size:.8em;font-weight:650;color:inherit}
+.period-summary-value .coverage{font-size:.73em;color:var(--secondary-text-color);font-weight:550}
 .wrap{max-width:${maxW}px;margin:0 auto}
 .card-version{position:absolute;right:9px;bottom:5px;color:var(--sf-sub);opacity:.62;font-size:10px;line-height:1;font-weight:400;letter-spacing:.01em;pointer-events:none;user-select:none}
 
@@ -1586,13 +1646,14 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
   }
 
   _updateHeaderSummary(m) {
-    // A late-starting Recorder series may still be shown in a source tile as a
-    // labelled partial interval. But the compact header claims complete totals
-    // for the selected dates; suppress metrics with incomplete start coverage.
+    // A measured partial day can be shown, but must be labelled as partial.
     const incomplete=[];
     if(m?.historical){
-      const partial=new Set(this._historyData?.partialIds||[]);
-      const pv= this._pvPlants().some(p=>partial.has(p.energy_total));
+      const partial=new Set([
+        ...(this._historyData?.partialIds||[]),
+        ...(this._historyData?.missingEndIds||[])
+      ]);
+      const pv=this._pvPlants().some(p=>partial.has(p.energy_total));
       const imp=partial.has(this._c.grid.import_total);
       const exp=partial.has(this._c.grid.export_total);
       const battery=!!this._c.battery?.power&&
@@ -1602,23 +1663,31 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
       if(exp)incomplete.push('export');
       if(pv||imp||exp||battery)incomplete.push('demand');
     }
-    // Always visible, including when the optional detailed stats are hidden.
-    for (const [key, energy] of sfcHeaderMetrics(m,incomplete)) {
-      const valueEl = this.shadowRoot.querySelector(`.period-summary-row[data-metric="${key}"] .period-summary-value`);
+    for (const [key, energy] of sfcHeaderMetrics(m)) {
+      const valueEl = this.shadowRoot.querySelector('.period-summary-row[data-metric="'+key+'"] .period-summary-value');
       if (!valueEl) continue;
       const number = energy != null && Number.isFinite(energy) && energy >= 0
         ? energy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}) : '–';
-      if (valueEl.dataset.value === number) continue;
-      valueEl.dataset.value = number;
+      const partial=number!=='–'&&incomplete.includes(key);
+      const rendered=number+(partial?'|partial':'');
+      if (valueEl.dataset.value === rendered) continue;
+      valueEl.dataset.value = rendered;
+      valueEl.title=partial?'Teilzeitraum: nur tatsächlich gemessener Abschnitt, kein vollständiger Tageswert':'';
       if (number === '–') valueEl.textContent = '–';
       else {
         const unit = document.createElement('span');
         unit.className = 'unit';unit.textContent = 'kWh';
-        valueEl.replaceChildren(document.createTextNode(number+' '),unit);
+        const children=[document.createTextNode(number+' '),unit];
+        if(partial){
+          const note=document.createElement('span');
+          note.className='coverage';note.textContent=' · Teil';
+          note.title='Teilzeitraum';
+          children.push(note);
+        }
+        valueEl.replaceChildren(...children);
       }
     }
   }
-
   _updateStats(m) {
     if (!this._c.show_stats) return;
     const r = this.shadowRoot;
