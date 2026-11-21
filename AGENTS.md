@@ -1,3 +1,10 @@
+## Flow Card v0.6.34 – Periodensummen nach Pfeil/Kalender zuverlässig synchronisieren
+
+- Der Fehler betrifft **nur vier Kopf-Summenzeilen**, während Energie-Kacheln des ausgewählten Zeitraums weiterhin Werte liefern. Deshalb **keine** pauschal verbreiterten Recorder-Abfragefenster oder Schätzungen wegen eines reinen Anzeigeproblems.
+- **Live**, Kalender und Pfeile bleiben unterschiedliche UI-Aktionen, aber alle Tagesauswahlen verwenden dieselbe `_loadHistory(start,end,preset)`-Logik; keine Sonderbehandlung von „Heute“ für die Pfeile.
+- Historisch **unvollständige** Ergebnisse mit fehlenden Zählern oder Teilabdeckung nicht im Cache wiederverwenden. Nur vollständig aufgelöste Messwerte für kurze Zeit puffern; bei erneuter Auswahl wird andernfalls neu abgefragt.
+- Im Header nicht nur `dataset.value`, sondern auch den **tatsächlichen dargestellten Text** gegen das aktuelle `_historicalModel` prüfen. Falls DOM und Datenmodell auseinanderlaufen, die vier Summen wiederherstellen, ohne die Kacheln zu verändern.
+- Tests `tests/test_history_reload_on_navigation.cjs`, `tests/test_ongoing_day_history.cjs`, `tests/test_selected_period_metrics.cjs` in Validate und Release. Bestehende Tests, Ressourcenregistrierung, Teilzeitraum-Markierung, leise CI und korrekte Versionierung erhalten.
 ## Flow Card v0.6.33 – Historische Tage mit spärlichen Recorder-Daten
 
 - Bei fehlender Stundenstatistik darf ein einzelner abgeschlossener Tag aus zwei echten benachbarten Recorder-Tages-SUMs berechnet werden (Vortag und ausgewählter Tag). Keine angenommene Null und keine Veränderung von 'statistic_during_period/change'. Bei fehlender oder rückläufiger Messung weiter unbekannt.
