@@ -5,7 +5,7 @@ const js=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/fr
 const py=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/sensor.py'),'utf8');
 const integration=fs.readFileSync(path.join(root,'custom_components/smartify_flow_card/__init__.py'),'utf8');
 assert.match(js,/class="house-energy-row"/,'total energy row appears after share stats');
-assert.match(js,/houseEnergy:balance\?\.total\?\?null/,'history house total from existing validated energy balance');
+assert.match(js,/const houseEnergy=sfcHistoricalHouseEnergy\(pv,imp,exp,discharge,charge,hasBattery\)/,'history house total depends on source meters, not overlapping device totals');
 assert.match(js,/houseEnergy: sfcHistoricalBalance\(this\._pvToday\(\)/,'live day total uses same validated balance');
 assert.match(js,/m\.houseEnergy==null\?'–'/,'missing data are not shown as zero');
 assert.match(js,/this\._historyPreset==='year'\?'Aktuelles Jahr'/,'year label');

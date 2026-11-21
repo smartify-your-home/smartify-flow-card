@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.32';
+const SFC_VERSION = '0.6.33';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -289,6 +289,15 @@ function sfcMeasuredDaySlice(points,from,to){
     partialFrom:measuredFrom,partialEnd:measuredTo!==to,through:measuredTo};
 }
 
+// A completed daily Recorder bucket contains the cumulative total at that
+// calendar day's end. Two adjacent real day buckets can give an exact day
+// even if the detailed hourly samples at midnight are absent.
+function sfcDailyBoundaryEnergy(points,previousDayStart,selectedDayStart){
+  const before=points?.get(previousDayStart),after=points?.get(selectedDayStart);
+  if(!Number.isFinite(before)||!Number.isFinite(after)||after<before-0.001)return null;
+  return Math.max(0,after-before);
+}
+
 function sfcPvPlants(solar) {
   if(Array.isArray(solar?.plants))return solar.plants.filter(p=>p&&(p.power||p.energy_total));
   return solar?.power||solar?.energy_total?[{name:solar.name||'PV-Anlage 1',power:solar.power||'',energy_total:solar.energy_total||''}]:[];
@@ -298,6 +307,13 @@ function sfcPvEnergy(plants,get) {
   if(!ids.length)return null;
   const values=ids.map(get);
   return values.some(v=>v==null||!Number.isFinite(v))?null:values.reduce((a,b)=>a+b,0);
+}
+function sfcHistoricalHouseEnergy(pv, imported, exported, discharged, charged, hasBattery = false) {
+  const required = [pv, imported, exported];
+  if (hasBattery) required.push(discharged, charged);
+  if (required.some(x => x == null || !Number.isFinite(x) || x < 0)) return null;
+  const total = pv + imported - exported + (hasBattery ? discharged - charged : 0);
+  return total < -0.001 ? null : Math.max(0,total);
 }
 function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recorded, hasBattery = false) {
   const required = [pv, imported, exported, recorded];
@@ -580,9 +596,21 @@ class SmartifyFlowCard extends HTMLElement {
     root.querySelector('.history-live').classList.toggle('selected',this._historyMode==='live');
     root.querySelector('.history-prev').disabled=!sfcPickerPage(range,mode,-1);
     root.querySelector('.history-next').disabled=!sfcPickerPage(range,mode,1);
+    const incomplete=this._historyData?.energy||null;
+    const missing=[];
+    if(this._historyMode==='history'&&!this._historyLoading&&incomplete){
+      if(this._pvPlants().some(p=>p.energy_total&&incomplete[p.energy_total]==null))missing.push('PV-Ertrag');
+      if(this._c.grid.import_total&&incomplete[this._c.grid.import_total]==null)missing.push('Netzbezug');
+      if(this._c.grid.export_total&&incomplete[this._c.grid.export_total]==null)missing.push('Netzbelieferung');
+      if(this._c.battery?.power){
+        if(this._c.battery.charge_total&&incomplete[this._c.battery.charge_total]==null)missing.push('Akkuladung');
+        if(this._c.battery.discharge_total&&incomplete[this._c.battery.discharge_total]==null)missing.push('Akkuentladung');
+      }
+    }
     el.textContent=this._historyMode==='history'
       ?(this._historyLoading?'Lade historische Energiedaten …':this._historyError||
          [
+           missing.length?'Keine Recorder-Werte für: '+missing.join(', '):'',
            this._historyData?.missingEndIds?.length?'Teilzeitraum: letzte Messung vor Tagesende':'',
            this._historyData?.partialIds?.length?'Teilzeitraum: erste Messung nicht am Tagesanfang':''
          ].filter(Boolean).join(' · '))
@@ -590,9 +618,22 @@ class SmartifyFlowCard extends HTMLElement {
   }
   async _getStatistics(ids,from,to,period,units=null){
     if(!ids.length)return {};
-    return this._h.callWS({type:'recorder/statistics_during_period',statistic_ids:ids,
-      start_time:new Date(from).toISOString(),end_time:new Date(to).toISOString(),
-      period:period,types:['sum'],...(units?{units}:{})});
+    try{
+      return await this._h.callWS({type:'recorder/statistics_during_period',statistic_ids:ids,
+        start_time:new Date(from).toISOString(),end_time:new Date(to).toISOString(),
+        period:period,types:['sum'],...(units?{units}:{})});
+    }catch(err){
+      if(ids.length===1)throw err;
+      // One bad or timed-out statistics ID must not hide all other meters.
+      // Retry by halves, keeping successful results; do not invent missing data.
+      const mid=Math.floor(ids.length/2);
+      const results=await Promise.allSettled([
+        this._getStatistics(ids.slice(0,mid),from,to,period,units),
+        this._getStatistics(ids.slice(mid),from,to,period,units)
+      ]);
+      if(results.every(r=>r.status==='rejected'))throw err;
+      return Object.assign({},...results.filter(r=>r.status==='fulfilled').map(r=>r.value||{}));
+    }
   }
   async _loadHistory(start,end,preset=null){
     const range=sfcValidatePeriod(start,end);
@@ -729,6 +770,30 @@ class SmartifyFlowCard extends HTMLElement {
           // Optional fallback must not invalidate already verified counters.
         }
       }
+      // A long-term Recorder daily aggregate may survive even when the
+      // boundary hour samples do not. Use TWO adjacent recorded day SUMs,
+      // never statistic_during_period/change or an implicit zero baseline.
+      const unresolved=archivedDay?ids.filter(id=>energy[id]==null):[];
+      if(unresolved.length){
+        try{
+          const previousDay=sfcAddDays(start,-1);
+          const previousStart=sfcDateWindow(previousDay,previousDay).from;
+          const days=await this._getStatistics(
+            unresolved,previousStart,range.to,'day',{energy:'kWh'});
+          for(const id of unresolved){
+            const delta=sfcDailyBoundaryEnergy(
+              sfcHistoryPoints(days[id],'kWh'),previousStart,range.from);
+            if(delta==null)continue;
+            energy[id]=delta;
+            const p=partialIds.indexOf(id);
+            if(p>=0)partialIds.splice(p,1);
+            const e=missingEndIds.indexOf(id);
+            if(e>=0)missingEndIds.splice(e,1);
+            delete partialFrom[id];
+            delete partialUntil[id];
+          }
+        }catch(_){ /* Keep verified hourly results if daily stats unavailable. */ }
+      }
       const peakId=this._c.grid.import_total;
       let peak=null;
       // HA 5-minute stats have short retention: never label an incomplete
@@ -747,7 +812,10 @@ class SmartifyFlowCard extends HTMLElement {
       }
       if(seq!==this._historySeq||this._historyMode!=='history')return;
       this._historyData={energy,peak,partialIds,partialFrom,lastTimes,missingEndIds,partialUntil};
-      this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),data:this._historyData});
+      // Missing counters often arrive later from Recorder. Recheck promptly
+      // rather than caching a completely empty day for five minutes.
+      const missing=ids.some(id=>energy[id]==null);
+      this._historyCache.set(key,{until:Date.now()+(range.isToday||missing?60000:300000),data:this._historyData});
       while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
     }catch(_){
       if(seq!==this._historySeq)return;
@@ -781,6 +849,9 @@ class SmartifyFlowCard extends HTMLElement {
     all.sort((x,y)=>y.energy-x.energy||String(x.key).localeCompare(String(y.key)));
     const measured=all.reduce((sum,n)=>sum+n.energy,0);
     const balance=sfcHistoricalBalance(pv,imp,exp,discharge,charge,measured,hasBattery);
+    // The house demand depends on source meters, not on whether individually
+    // measured consumers happen to exceed it (overlap/partial device history).
+    const houseEnergy=sfcHistoricalHouseEnergy(pv,imp,exp,discharge,charge,hasBattery);
     const rest=balance?.rest??null;
     // Missing device counters remain part of the rest balance: never subtract them
     // as zero, and never create a second "other" energy bucket for them.
@@ -829,7 +900,7 @@ class SmartifyFlowCard extends HTMLElement {
       if(n.gridW>0)flows.push({from:'_grid',to:n.key,w:n.gridW});
     }
     return {historical:true,left,right,flows,pvT:pv,impT:imp,expT:exp,chargeT:charge,dischargeT:discharge,
-      houseEnergy:balance?.total??null,restEnergy:rest,peak:this._historyData.peak,missingCount:missing.length,
+      houseEnergy,restEnergy:rest,peak:this._historyData.peak,missingCount:missing.length,
       limitPct:null,fc:null,fcRem:null};
   }
   _openHistoryDialog(){
