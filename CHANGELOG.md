@@ -1,3 +1,10 @@
+## v0.6.34 – Summenzeilen bei Kalender- und Pfeilnavigation synchronisieren (2026-11-21)
+
+- Leere oder unvollständige Zwischenspeicher-Ergebnisse eines ausgewählten Tages werden nicht beim nächsten Besuch über Pfeiltasten wieder angezeigt. Stattdessen ruft die Karte die Daten frisch ab; nur vollständig erfasste Ergebnisse bleiben zwischengespeichert.
+- Die vier Summenzeilen werden gegen die **tatsächlich dargestellten Werte** abgeglichen, nicht bloß gegen einen möglicherweise veralteten DOM-Daten-Cache. Daten der Kacheln und unveränderte Datenmodelle bleiben erhalten.
+- Abgeschlossene und noch laufende Tage verwenden denselben historischen Ladeweg, unabhängig davon, ob der Tag über Pfeile oder Kalender gewählt wurde. Der Live-Button bleibt separat.
+- Die bestehenden kurzen Recorder-Zeitfenster wurden bewusst **nicht** erweitert: Gemeldetes Problem betrifft die Kopf-Summen trotz funktionierender Energiekacheln. Keine erfundenen Messwerte.
+- Regressionen für wiederholte Auswahl unvollständiger/abgeschlossener und laufender Tage sowie für aus dem Takt geratene Anzeige-Caches ergänzt; Validierung ohne Push-Mail-Flut.
 ## v0.6.33 – Weitere historische Tage aus echten Tagesstatistiken (2026-11-21)
 
 - Bei fehlenden stündlichen Zählerständen rund um Mitternacht nutzt die Karte für einen einzelnen abgeschlossenen Tag zusätzlich zwei tatsächliche Recorder-Tages-SUMs (gewählter Tag und Vortag). Ohne beide Werte oder bei Zählerreset bleibt der Zähler unbekannt; keine Null-Baseline oder Schätzung.
