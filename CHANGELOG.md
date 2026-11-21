@@ -1,3 +1,10 @@
+## v0.6.35 – Summenzeilen unabhängig von Kacheln und Linien (2026-11-21)
+
+- **Ursache im Renderablauf korrigiert:** Die vier Summenzeilen standen bislang am Ende des Karten-Updates – nach sämtlichen Kacheln. Ein Fehler im Kachel-/Layoutpfad konnte die Aktualisierung verhindern, obwohl die Kacheln bereits Werte zeigten.
+- Summen-Rendering erfolgt jetzt **vor** Node-Synchronisierung, SVG, Linien und optionaler Statistikdarstellung.
+- Auch wenn Verbraucher unter Mindestleistung liegen, Kacheln ausgeblendet werden oder keine Linien vorhanden sind, bleiben die vier Werte aus dem aktuellen Zeitraum-Modell verfügbar. Fehlende echte Zählerwerte weiterhin „–“; keine geschätzten Daten.
+- Neue Regression für Kachelfehler und Filterung sämtlicher Kacheln/Verbindungslinien. Bestehende Tests, historische Recorder-Logik, Theme und Cache unverändert. Validate bleibt ohne Push-Flut.
+
 ## v0.6.34 – Summenzeilen bei Kalender- und Pfeilnavigation synchronisieren (2026-11-21)
 
 - Leere oder unvollständige Zwischenspeicher-Ergebnisse eines ausgewählten Tages werden nicht beim nächsten Besuch über Pfeiltasten wieder angezeigt. Stattdessen ruft die Karte die Daten frisch ab; nur vollständig erfasste Ergebnisse bleiben zwischengespeichert.

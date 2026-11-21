@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.34';
+const SFC_VERSION = '0.6.35';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -1568,6 +1568,10 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     this._flowEl.hidden=false;
     this.shadowRoot.querySelector('.stats').hidden=!this._c.show_stats;
     this._m=m;
+    // The four period totals are independent of the SVG, energy tiles and
+    // optional statistics. Render them FIRST. A tile formatting/layout error
+    // must never leave valid period totals showing a stale dash.
+    this._updateHeaderSummary(m);
     this._syncNodes(this._leftEl, m.left);
     this._syncNodes(this._rightEl, m.right);
     const mf=m.historical?-1:Number(this._c.idle_power ?? this._c.min_flow ?? 5);
@@ -1671,7 +1675,6 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         n.energy==null?'Keine Energiedaten':(n.historyNote||'Modellierte Quellenanteile'),'','',null);
       else set(n,this._fmtW(n.w),n.energy!=null?this._fmtKwh(n.energy)+' kWh heute':'','','',null);
     }
-    this._updateHeaderSummary(m);
     this._updateStats(m);
     this._scheduleDraw();
   }

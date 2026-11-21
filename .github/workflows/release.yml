@@ -52,6 +52,7 @@ jobs:
           node tests/test_period_picker.cjs
           node tests/test_compact_header_picker.cjs
           node tests/test_selected_period_metrics.cjs
+          node tests/test_header_independent_of_tiles.cjs
           node tests/test_live_back_arrow.cjs
           node tests/test_sparse_days.cjs
           node tests/test_history_reload_on_navigation.cjs

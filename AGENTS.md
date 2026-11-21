@@ -1,3 +1,10 @@
+## Flow Card v0.6.35 – Kopf-Summen niemals an Kacheln oder Linien koppeln
+
+- Die vier Summen (Energiebedarf, Netzbezug, Netzbelieferung, PV-Ertrag) hängen **nur** am aktuellen Live-/History-Modell des ausgewählten Zeitraums. Sie müssen bereits vor jeglichem Aufbau, Filtern oder Zeichnen von Kacheln, Linien, SVG oder optionalen Statistiken aktualisiert werden.
+- `min_power`, `min_flow`, `idle_power`, `hide_below_display_power`, versteckte/fehlende Verbraucher-Kacheln und unterdrückte Verbindungslinien dürfen die vier Summen **niemals** auf „–“ setzen, sofern die Quell-Messwerte des Modells vorliegen. Echte fehlende Quellen bleiben dagegen unbekannt; keine Werte erfinden.
+- Ein Fehler bei Kachel-Formatierung, Node-Synchronisierung, Linienzeichnung oder Layout darf vorhandene Modellwerte in den Kopf-Summenzeilen nicht blockieren. Vorherige Zeiträume während des Ladens weiter löschen.
+- `tests/test_header_independent_of_tiles.cjs` validiert dieses Verhalten auch bei absichtlich abgebrochener Kachelverarbeitung und vollständig gefilterten Kacheln/Flüssen. Beibehalten: aktuelle Recorder-Intervalle, HA-Ressourcenregistrierung, korrekte Versionsangaben und leise CI.
+
 ## Flow Card v0.6.34 – Periodensummen nach Pfeil/Kalender zuverlässig synchronisieren
 
 - Der Fehler betrifft **nur vier Kopf-Summenzeilen**, während Energie-Kacheln des ausgewählten Zeitraums weiterhin Werte liefern. Deshalb **keine** pauschal verbreiterten Recorder-Abfragefenster oder Schätzungen wegen eines reinen Anzeigeproblems.
