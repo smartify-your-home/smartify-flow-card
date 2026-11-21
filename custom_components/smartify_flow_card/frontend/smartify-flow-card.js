@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.33';
+const SFC_VERSION = '0.6.34';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -635,7 +635,20 @@ class SmartifyFlowCard extends HTMLElement {
       return Object.assign({},...results.filter(r=>r.status==='fulfilled').map(r=>r.value||{}));
     }
   }
+  _showLive(){
+    // Keep one authoritative Today path: Live already owns the ongoing
+    // today's energy counters and refresh cycle. Reentering today via either
+    // navigation arrows or the calendar must not use a stale historical cache.
+    ++this._historySeq;
+    this._historyMode='live';this._historyPreset=null;this._historyRange=null;
+    this._historyData=null;this._historyLoading=false;this._historyError='';
+    this._historyDrawPending=true;
+    this.shadowRoot.querySelector('.history-overlay')?.remove();
+    this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
+  }
   async _loadHistory(start,end,preset=null){
+    // Arrow navigation and calendar must use the SAME historical loader for
+    // any selected day, including today. Only the Live button switches mode.
     const range=sfcValidatePeriod(start,end);
     if(!range){
       this._historyError='Ungültiger Zeitraum (maximal 5 Jahre, kein zukünftiges Datum).';
@@ -650,10 +663,14 @@ class SmartifyFlowCard extends HTMLElement {
     this._historyDrawPending=true;
     this._historyData=null;this._historyError='';this._historyStatus();this._update();
     const cache=this._historyCache.get(key);
-    if(cache?.until>Date.now()){
+    if(cache?.until>Date.now()&&cache?.complete===true){
       this._historyData=cache.data;this._historyLoading=false;
       this._historyStatus();this._update();return;
     }
+    // Never replay a missing/partial response from a previous click.
+    // Such results may have been received before Recorder finished writing
+    // statistics; a fresh selection must requery the chosen day.
+    if(cache&&!cache.complete)this._historyCache.delete(key);
     try{
       // Read only the BEGINNING and END of the selected period. Never rely
       // on recorder/statistic_during_period 'change': if its first recorded
@@ -735,9 +752,8 @@ class SmartifyFlowCard extends HTMLElement {
         }
         }catch(_){ /* Daily lookup is optional; try bounded hourly recovery. */ }
       }
-      // The initial 2h boundary queries miss meters that sleep overnight.
-      // Only for a single past day, request a bounded set of hourly buckets
-      // around both boundaries, and only for affected counters.
+      // Keep the existing, bounded Recorder recovery unchanged. Header
+      // display issues must not trigger unrelated wider data queries.
       const archivedDay=!range.isToday&&range.to-range.from<=26*3600000;
       const affected=archivedDay?ids.filter(id=>
         energy[id]==null||partialIds.includes(id)||missingEndIds.includes(id)):[];
@@ -814,9 +830,15 @@ class SmartifyFlowCard extends HTMLElement {
       this._historyData={energy,peak,partialIds,partialFrom,lastTimes,missingEndIds,partialUntil};
       // Missing counters often arrive later from Recorder. Recheck promptly
       // rather than caching a completely empty day for five minutes.
-      const missing=ids.some(id=>energy[id]==null);
-      this._historyCache.set(key,{until:Date.now()+(range.isToday||missing?60000:300000),data:this._historyData});
-      while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
+      const incomplete=ids.some(id=>energy[id]==null||
+        partialIds.includes(id)||missingEndIds.includes(id));
+      if(!incomplete){
+        this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),
+          complete:true,data:this._historyData});
+        while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
+      }else{
+        this._historyCache.delete(key);
+      }
     }catch(_){
       if(seq!==this._historySeq)return;
       this._historyData=null;this._historyError='Recorder-Statistiken nicht verfügbar';
@@ -1015,11 +1037,7 @@ class SmartifyFlowCard extends HTMLElement {
     render();overlay.querySelector('h3').focus({preventScroll:true});
   }
   _initHistoryControls(){
-    this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>{
-      ++this._historySeq;this._historyMode='live';this._historyPreset=null;this._historyLoading=false;this._historyDrawPending=true;this._historyError='';
-      this.shadowRoot.querySelector('.history-overlay')?.remove();
-      this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
-    });
+    this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>this._showLive());
     this.shadowRoot.querySelector('.history-picker').addEventListener('click',()=>this._openHistoryDialog());
     for(const [selector,step] of [['.history-prev',-1],['.history-next',1]]){
       this.shadowRoot.querySelector(selector).addEventListener('click',()=>{
@@ -1741,7 +1759,11 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         ? energy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}) : '–';
       const partial=number!=='–'&&incomplete.includes(key);
       const rendered=number+(partial?'|partial':'');
-      if (valueEl.dataset.value === rendered) continue;
+      // Do not skip a refresh based only on a DOM dataset cache. HA may
+      // reconstruct/update the visible header independently of the source
+      // tiles; reconcile the displayed text with the current model as well.
+      if(valueEl.dataset.value===rendered&&
+         valueEl.textContent===(number==='–'?'–':number+' kWh'+(partial?' · Teil':'')))continue;
       valueEl.dataset.value = rendered;
       valueEl.title=partial?'Teilzeitraum: nur tatsächlich gemessener Abschnitt, kein vollständiger Tageswert':'';
       if (number === '–') valueEl.textContent = '–';
