@@ -752,17 +752,15 @@ class SmartifyFlowCard extends HTMLElement {
         }
         }catch(_){ /* Daily lookup is optional; try bounded hourly recovery. */ }
       }
-      // Short boundary lookups are not enough for all HA Recorder series.
-      // Use a bounded full-day read for affected counters on BOTH completed
-      // and ongoing calendar days. For today, range.to already ends at now.
-      // A preceding-day baseline can survive a full night of missing samples.
-      const singleDay=range.to-range.from<=26*3600000;
-      const affected=singleDay?ids.filter(id=>
+      // Keep the existing, bounded Recorder recovery unchanged. Header
+      // display issues must not trigger unrelated wider data queries.
+      const archivedDay=!range.isToday&&range.to-range.from<=26*3600000;
+      const affected=archivedDay?ids.filter(id=>
         energy[id]==null||partialIds.includes(id)||missingEndIds.includes(id)):[];
       if(affected.length){
         try{
           const around=await this._getStatistics(
-            affected,range.from-26*3600000,range.to,'hour',{energy:'kWh'});
+            affected,range.from-14*3600000,range.to,'hour',{energy:'kWh'});
           for(const id of affected){
             const value=sfcMeasuredDaySlice(sfcHistoryPoints(around[id],'kWh'),range.from,range.to);
             if(!value)continue; // No two genuine observations: still unknown.
@@ -791,7 +789,7 @@ class SmartifyFlowCard extends HTMLElement {
       // A long-term Recorder daily aggregate may survive even when the
       // boundary hour samples do not. Use TWO adjacent recorded day SUMs,
       // never statistic_during_period/change or an implicit zero baseline.
-      const unresolved=singleDay&&!range.isToday?ids.filter(id=>energy[id]==null):[];
+      const unresolved=archivedDay?ids.filter(id=>energy[id]==null):[];
       if(unresolved.length){
         try{
           const previousDay=sfcAddDays(start,-1);
@@ -1761,7 +1759,11 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
         ? energy.toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2}) : '–';
       const partial=number!=='–'&&incomplete.includes(key);
       const rendered=number+(partial?'|partial':'');
-      if (valueEl.dataset.value === rendered) continue;
+      // Do not skip a refresh based only on a DOM dataset cache. HA may
+      // reconstruct/update the visible header independently of the source
+      // tiles; reconcile the displayed text with the current model as well.
+      if(valueEl.dataset.value===rendered&&
+         valueEl.textContent===(number==='–'?'–':number+' kWh'+(partial?' · Teil':'')))continue;
       valueEl.dataset.value = rendered;
       valueEl.title=partial?'Teilzeitraum: nur tatsächlich gemessener Abschnitt, kein vollständiger Tageswert':'';
       if (number === '–') valueEl.textContent = '–';
