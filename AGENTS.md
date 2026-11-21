@@ -1,3 +1,10 @@
+## Flow Card v0.6.32 – Tagesnavigation ab Live und Nachtlücken (verbindlich)
+
+- **Live → Pfeil links** muss sofort auf gestern, weitere Klicks auf vorgestern usw. wechseln. Erforderliche Regression: `tests/test_live_back_arrow.cjs`, auch bei PV-Energiezählern ohne Mitternachts-Statistiken. `sfcPickerPage`/Navigation nicht zurückbauen.
+- Die vorhandene 0.6.31-Regel vollständiger Tagesenergie bleibt gültig: Nur exakt an beiden Kalendergrenzen gestützte Zahlen gelten als vollständige Tageswerte. Sind einzelne Stunden-Zählerstände nachts nicht vorhanden, kann für einen **einzelnen abgeschlossenen Tag** eine eng begrenzte (maximal 14 Stunden Vorlauf + 23–25 Stunden des Tages) Stundenstatistik-Abfrage fehlende Grenzen ersetzen.
+- Der Ersatz verwendet **zwei tatsächlich gespeicherte kumulative Zählerstände**, niemals einen angenommenen Nullwert. Jeder ungenaue Beginn oder jedes ungenaue Ende wird als **Teilzeitraum** markiert – auch oben an den vier kompakten kWh-Werten (`· Teil`) und beim abgeleiteten Energiebedarf. Ohne zwei belastbare Werte weiterhin `–` statt einer erfundenen Summe.
+- Fallback nur für betroffene Zähler und einzelne historische Tage, niemals ganze Jahre abfragen. Scheitert eine optionale Nachsuche, gültige andere Zähler und Anzeige erhalten; parallele schnelle Auswahl nicht mit veralteten Ergebnissen überschreiben.
+- Bestehende Verteilung, PV/Batterie/Netz-Bilanz, Theme, Ressourcenregistrierung, `?v=`-Versionierung und leise CI-Trigger erhalten. Vor Veröffentlichung alle Tests und Release-Metadaten prüfen.
 ## Flow Card v0.6.31 – Zeitraum-Kennzahlen müssen zum Picker passen
 
 - Beim Wechsel des historischen Datumsbereichs, während des Ladens und bei Recorder-Fehlern dürfen keine alten kWh-Werte aus dem vorherigen Zeitraum stehen bleiben. Im `_update()`-Pfad ohne gültiges Modell immer `_updateHeaderSummary(null)` aufrufen. Im Historienmodus alle vier Summen aus der aktuellen `_historyData.energy` verwenden.
