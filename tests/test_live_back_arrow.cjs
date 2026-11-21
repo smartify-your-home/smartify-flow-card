@@ -57,7 +57,7 @@ const card={
     assert.equal(period,'hour');
     assert.equal(units?.energy,'kWh');
     const {from,to}=selected;
-    const isAround=start===from-26*ms&&end===to;
+    const isAround=start===from-14*ms&&end===to;
     const isHead=start===from-ms;
     const isTail=start===to-2*ms;
     assert(isAround||isHead||isTail,'unexpected period query');
