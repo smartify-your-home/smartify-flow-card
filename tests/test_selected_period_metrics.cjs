@@ -106,9 +106,11 @@ function cardFor(endsComplete){
   summary._updateHeaderSummary.call(widget,{
     historical:true,houseEnergy:19,impT:9,expT:2,pvT:12
   });
-  assert.equal(elements.pv.textContent,'–','partial-start PV is not labelled a full-period PV total');
-  assert.equal(elements.demand.textContent,'–','demand depending on partial PV is not a full-period total');
+  assert.equal(elements.pv.dataset.value,'12,00|partial','partial-start PV value remains visible with a marker');
+  assert.match(elements.pv.textContent,/12,00 kWh · Teil/,'PV covered interval is explicitly labelled');
+  assert.equal(elements.demand.dataset.value,'19,00|partial','derived demand is also marked as partial');
+  assert.match(elements.demand.textContent,/19,00 kWh · Teil/);
   assert.equal(elements.import.dataset.value,'9,00','complete imported energy remains visible');
   assert.equal(elements.export.dataset.value,'2,00','complete exported energy remains visible');
-  console.log('Selected-period header values: stale reset, complete day boundaries and correct next period passed');
+  console.log('Selected-period header: stale reset, strict full intervals, partial source warning and next period passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});
