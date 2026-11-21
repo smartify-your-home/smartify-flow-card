@@ -1,3 +1,10 @@
+## Flow Card v0.6.33 – Historische Tage mit spärlichen Recorder-Daten
+
+- Bei fehlender Stundenstatistik darf ein einzelner abgeschlossener Tag aus zwei echten benachbarten Recorder-Tages-SUMs berechnet werden (Vortag und ausgewählter Tag). Keine angenommene Null und keine Veränderung von 'statistic_during_period/change'. Bei fehlender oder rückläufiger Messung weiter unbekannt.
+- Gebündelte Recorder-Abfragen bei Fehlern in kleinere Gruppen aufteilen und gültige Zähler anderer Quellen erhalten. Fehlende Quellzähler im Kopfstatus nach PV, Bezug, Lieferung oder Akku benennen.
+- Hausenergie aus PV + Netzbezug − Einspeisung + Akkuentladung − Akkuladung unabhängig von der Summe möglicherweise überlappender Gerätezähler berechnen. Ein ungültiger negativer Rest bleibt unbekannt; kein künstliches 'Nicht erfasst'.
+- Fehlende Tage 60 Sekunden cachen, vollständig vorliegende abgeschlossene Zeiträume 300 Sekunden. Keine Schätzung fehlender Zähler, bestehende Teil-Kennzeichnung und Kalenderpfeile beibehalten.
+- Regression tests/test_sparse_days.cjs in Validate und Release. Bestehende Tests und leise CI-Trigger erhalten. Alle Versionsangaben und Dokumente synchron halten.
 ## Flow Card v0.6.32 – Tagesnavigation ab Live und Nachtlücken (verbindlich)
 
 - **Live → Pfeil links** muss sofort auf gestern, weitere Klicks auf vorgestern usw. wechseln. Erforderliche Regression: `tests/test_live_back_arrow.cjs`, auch bei PV-Energiezählern ohne Mitternachts-Statistiken. `sfcPickerPage`/Navigation nicht zurückbauen.
