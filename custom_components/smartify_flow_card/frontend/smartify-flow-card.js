@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.30';
+const SFC_VERSION = '0.6.31';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -293,9 +293,14 @@ function sfcHistoricalBalance(pv, imported, exported, discharged, charged, recor
 }
 // Selected-period top-line energy values. House demand is already calculated
 // as PV + import - export + battery discharge - battery charge.
-function sfcHeaderMetrics(model) {
-  return [['demand',model?.houseEnergy],['import',model?.impT],
-          ['export',model?.expT],['pv',model?.pvT]];
+function sfcHeaderMetrics(model, incomplete=[]) {
+  // Header values are labelled as totals for the selected interval. A meter
+  // with an incomplete START must not masquerade as a full-period total here.
+  const excluded=new Set(incomplete);
+  return [['demand',excluded.has('demand')?null:model?.houseEnergy],
+          ['import',excluded.has('import')?null:model?.impT],
+          ['export',excluded.has('export')?null:model?.expT],
+          ['pv',excluded.has('pv')?null:model?.pvT]];
 }
 function sfcEnergyDelta(points,from,to) {
   // Full cumulative-energy boundaries only; do not manufacture estimates.
@@ -559,7 +564,10 @@ class SmartifyFlowCard extends HTMLElement {
     root.querySelector('.history-next').disabled=!sfcPickerPage(range,mode,1);
     el.textContent=this._historyMode==='history'
       ?(this._historyLoading?'Lade historische Energiedaten …':this._historyError||
-         (this._historyData?.partialIds?.length?'Teilweise erst ab erster verfügbarer Stundenstatistik':''))
+         [
+           this._historyData?.missingEndIds?.length?'Unvollständige Recorder-Daten am Zeitraumende':'',
+           this._historyData?.partialIds?.length?'Teilweise erst ab erster verfügbarer Stundenstatistik':''
+         ].filter(Boolean).join(' · '))
       :'';
   }
   async _getStatistics(ids,from,to,period,units=null){
@@ -598,7 +606,7 @@ class SmartifyFlowCard extends HTMLElement {
           ?this._getStatistics(ids,range.to-3600000,range.to,'5minute',{energy:'kWh'}).catch(()=>({}))
           :Promise.resolve({})
       ]);
-      const energy={},partialIds=[],partialFrom={},lastTimes=[];
+      const energy={},partialIds=[],partialFrom={},lastTimes=[],missingEndIds=[];
       const pvIds=new Set(this._pvPlants().map(p=>p.energy_total).filter(Boolean));
       const missingStart=[];
       for(const id of ids){
@@ -608,7 +616,11 @@ class SmartifyFlowCard extends HTMLElement {
         const last=sfcHistoryPoints(tail[id],'kWh');
         const fine=sfcHistoryPoints(fineTail[id],'kWh');
         const value=sfcVerifiedBoundaryEnergy(first,last,fine,range.from,range.to);
-        if(value){
+        // For a finished calendar period every counter must actually reach the
+        // chosen end boundary. Never present the previous hour(s) as a full day.
+        const incompleteEnd=!!value&&!range.isToday&&value.through!==range.to;
+        if(incompleteEnd)missingEndIds.push(id);
+        if(value&&!incompleteEnd){
           energy[id]=value.kwh;
           if(value.partialStart){
             partialIds.push(id);
@@ -617,9 +629,9 @@ class SmartifyFlowCard extends HTMLElement {
           if(value.through)lastTimes.push(value.through);
         }else{
           energy[id]=null;
-          // Use the same guarded late-statistic fallback for consumers and PV
-          // plants, not for the grid/battery counters that define the balance.
-          if(pvIds.has(id)||this._consumerEntities().some(entity=>this._energyId(entity)===id))
+          // The fallback can only repair a missing START, not a missing END.
+          // Do not download entire history looking for an end that is absent.
+          if(!incompleteEnd&&(pvIds.has(id)||this._consumerEntities().some(entity=>this._energyId(entity)===id)))
             missingStart.push(id);
         }
       }
@@ -643,6 +655,10 @@ class SmartifyFlowCard extends HTMLElement {
             const fine=sfcHistoryPoints(fineTail[id],'kWh');
             const value=sfcVerifiedBoundaryEnergy(openingPts,last,fine,firstHour,range.to);
             if(!value)return null;
+            if(!range.isToday&&value.through!==range.to){
+              missingEndIds.push(id);
+              return null;
+            }
             // The first recorded bucket is an actual cumulative baseline,
             // never the fictitious zero at the beginning of the year.
             value.partialStart=true;
@@ -675,7 +691,7 @@ class SmartifyFlowCard extends HTMLElement {
         }catch(_){peak=null;}
       }
       if(seq!==this._historySeq||this._historyMode!=='history')return;
-      this._historyData={energy,peak,partialIds,partialFrom,lastTimes};
+      this._historyData={energy,peak,partialIds,partialFrom,lastTimes,missingEndIds};
       this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),data:this._historyData});
       while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
     }catch(_){
@@ -1392,6 +1408,10 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
     if (!this._h || !this._c || !this._flowEl) return;
     const m=this._historyMode==='history'?this._historicalModel():this._compute();
     if(!m){
+      // Selected period changed or Recorder is unavailable: never leave the
+      // previous period's four kWh values visible beneath the NEW date label.
+      this._m=null;
+      this._updateHeaderSummary(null);
       this._flowEl.hidden=true;
       this.shadowRoot.querySelector('.stats').hidden=true;
       return;
@@ -1566,8 +1586,24 @@ path.fs{stroke-dasharray:7 5;animation-name:sfs} path.fb{stroke-dasharray:10 4 2
   }
 
   _updateHeaderSummary(m) {
+    // A late-starting Recorder series may still be shown in a source tile as a
+    // labelled partial interval. But the compact header claims complete totals
+    // for the selected dates; suppress metrics with incomplete start coverage.
+    const incomplete=[];
+    if(m?.historical){
+      const partial=new Set(this._historyData?.partialIds||[]);
+      const pv= this._pvPlants().some(p=>partial.has(p.energy_total));
+      const imp=partial.has(this._c.grid.import_total);
+      const exp=partial.has(this._c.grid.export_total);
+      const battery=!!this._c.battery?.power&&
+        (partial.has(this._c.battery.charge_total)||partial.has(this._c.battery.discharge_total));
+      if(pv)incomplete.push('pv');
+      if(imp)incomplete.push('import');
+      if(exp)incomplete.push('export');
+      if(pv||imp||exp||battery)incomplete.push('demand');
+    }
     // Always visible, including when the optional detailed stats are hidden.
-    for (const [key, energy] of sfcHeaderMetrics(m)) {
+    for (const [key, energy] of sfcHeaderMetrics(m,incomplete)) {
       const valueEl = this.shadowRoot.querySelector(`.period-summary-row[data-metric="${key}"] .period-summary-value`);
       if (!valueEl) continue;
       const number = energy != null && Number.isFinite(energy) && energy >= 0

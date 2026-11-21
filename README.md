@@ -43,7 +43,7 @@ Beim Wechsel der Zeitfilter wird die SVG-Geometrie nach Wiederanzeige des Flow-C
 
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.30 · Karte v0.6.30**
+**Integration v0.6.31 · Karte v0.6.31**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -57,6 +57,13 @@ Der Kopfbereich ist unabhängig von der konfigurierten maximalen Breite des Ener
 
 Im Kalender übernehmen **alle zehn Kurzwahlen** ohne „Auswählen“ sofort den Zeitraum und schließen das Popup. Ein einzelner Kalendertag wird ebenfalls mit einem Klick direkt übernommen. Für eine beliebige **Mehrtagesauswahl** zuerst **„Bereich wählen“** aktivieren, dann Anfang und Ende wählen und mit **„Auswählen“** bestätigen. **Abbrechen** und Escape verwerfen, künftige Daten und Zeiträume über fünf Jahre bleiben ausgeschlossen. Tests: `tests/test_period_picker.cjs` und `tests/test_compact_header_picker.cjs`.
 
+## Zeitraum-Kennzahlen korrekt aktualisieren (v0.6.31)
+
+Die vier Kennzahlen im Kartenkopf (Energiebedarf, Netzbezug, Netzbelieferung, PV Ertrag) dürfen niemals Werte des zuvor gewählten Datumsbereichs anzeigen. Beim Wechsel eines historischen Zeitraums werden die vorherigen Zahlen sofort durch „–“ ersetzt; bis die Recorder-Abfrage fertig ist, erscheint der vorhandene Ladehinweis. Bei fehlgeschlagenen Anfragen bleiben die Werte unbekannt.
+
+Für abgeschlossene Kalendertage und Zeiträume wird ein Energiezuwachs nur als vollständiger Zeitraum gezeigt, wenn der Recorder auch einen verifizierten Zählerstand an der tatsächlichen Endgrenze bereitstellt. Fehlt etwa die letzte Stunde, erscheint beim betroffenen Zähler „–“ und der Hinweis „Unvollständige Recorder-Daten am Zeitraumende“. Fehlende Enddaten lösen keine Startzeit-Nachsuche aus. Bei laufenden Zeiträumen bis heute zählen weiterhin nur tatsächlich abgeschlossene Recorder-Buckets.
+
+Die Energiebilanz (PV + Netzbezug − Netzbelieferung + Akkuentladung − Akkuladung), bestehende Teilzeitraum-Regel bei später eingebauten Anlagen, Datumsnavigation und Konfiguration bleiben unverändert. Beginnt eine Messreihe erst innerhalb des ausgewählten Zeitraums, wird die betreffende Zahl oben nicht als vollständige kWh-Summe ausgegeben (bei PV ggf. auch der davon abhängige Energiebedarf). Die Quellkachel kann den Teilwert weiterhin mit Hinweis anzeigen. Regressionstest: tests/test_selected_period_metrics.cjs.
 ## Zeitraum-Picker im Home-Assistant-Stil (ab v0.6.28)
 
 Die bisherige Buttonreihe **Live / Datum / Tag / Monat / Jahr** wurde durch **Live · ‹ · [Kalender + Zeitraum] · ›** ersetzt. **Live** zeigt weiterhin die aktuellen Watt-/Kilowatt-Werte. Die Pfeile bewegen den aktiven historischen Zeitraum zurück oder vorwärts: Tag/Woche/Monat/Quartal/Jahr entsprechend ihrem Kalenderintervall, freie Zeiträume um ihre eigene Länge. Beim aktuellen Zeitraum ist Vorwärts deaktiviert; zukünftige Tage sind nicht anwählbar.
@@ -144,7 +151,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.30`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.31`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -166,7 +173,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.30
+/smartify_flow_card/smartify-flow-card.js?v=0.6.31
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -183,7 +190,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.30
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.31
       type: module
 ```
 
@@ -225,7 +232,7 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.30`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.31`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 

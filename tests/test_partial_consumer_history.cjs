@@ -13,7 +13,7 @@ const day=(v)=>new Date(v).toISOString();
 const samples=(entries)=>entries.map(([date,sum])=>({start:day(date),sum}));
 const lateFirst='2026-07-01T10:00:00Z';
 const lateDay='2026-07-01T00:00:00Z';
-const end='2026-10-31T22:00:00Z';
+const end='2026-10-31T23:00:00Z'; // Completed UTC hour ending at Nov 1 midnight
 let dailyCalls=0,openingCalls=0;
 const c={
  _historySeq:0,_historyCache:new Map(),_historyMode:'live',

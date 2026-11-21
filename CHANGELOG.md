@@ -1,3 +1,10 @@
+## v0.6.31 – Korrekte Kennzahlen zum ausgewählten Zeitraum (2026-11-21)
+
+- Die vier Kopfzeilen (Energiebedarf, Netzbezug, Netzbelieferung, PV Ertrag) werden sofort geleert, wenn eine neue historische Zeitspanne gewählt wird, statt irreführend Werte des vorherigen Zeitraums weiter anzuzeigen. Auch Recorder-Fehler lassen keine alten Zahlen stehen.
+- Abgeschlossene Zeiträume erfordern einen verifizierten Zählerstand genau an der Endgrenze. Fehlen letzte Stunden, erscheint beim betroffenen Zähler „–“ mit Hinweis zu unvollständigen Recorder-Daten, statt eines zu niedrigen vermeintlichen Vollzeitraumwerts.
+- Fehlender Endwert löst keine unnötige Nachsuche nach einem Anfangszählerstand aus. Für heute laufende Zeiten bleiben abgeschlossene Recorder-Buckets und die vorhandene Energiebilanz maßgeblich.
+- Zähler, deren Aufzeichnung erst nach dem Beginn des gewählten Zeitraums startet, liefern keine scheinbar vollständige Kopf-Kennzahl. Bei Teilabdeckung einer Quelle wird auch der davon abhängige Gesamtenergiebedarf im Kopfbereich als „–“ angezeigt; Teilwerte in Quellkacheln bleiben mit Teilzeitraumhinweis erhalten.
+- Neue Regressionstests für Periodenwechsel, Endgrenzen und vier Kopfkennzahlen in Validate/Release. Die CI-Trigger bleiben unverändert ruhig; Konfiguration, Theme, Auswahl und Statistikmodell bleiben kompatibel.
 ## v0.6.30 – Feinabstimmung der Kopfzeile (2026-11-16)
 
 - Gesamten Kopfbereich (Titel, Live-/Datumsnavigation, vier Energiekennzahlen) gegenüber v0.6.29 um **8 px nach rechts** versetzt; das Energieflussdiagramm bleibt unverändert.
