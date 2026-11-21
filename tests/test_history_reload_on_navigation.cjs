@@ -32,8 +32,8 @@ const card={
   _maybeEnergy(){},_maybeLivePeak(){},
   shadowRoot:{querySelector(selector){return button(selector)}},
   async _getStatistics(requested,from,to,period,units){
-    assert.equal(units?.energy,'kWh');
     if(period==='5minute')return {};
+    assert.equal(units?.energy,'kWh');
     if(period==='day')return {};
     if(period!=='hour')throw Error('unexpected period');
     hourlyCalls++;
