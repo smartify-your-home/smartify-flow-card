@@ -74,6 +74,11 @@ function cardFor(endsComplete){
     'missing end must not launch the missing-start recovery');
   assert.match(src,/if\(!range\.isToday&&value\.through!==range\.to\)/,
     'late-start fallback also requires complete end for past intervals');
+  const summaryMetrics=vm.runInContext('sfcHeaderMetrics',context);
+  assert.deepEqual(JSON.parse(JSON.stringify(summaryMetrics(
+    {houseEnergy:19,impT:9,expT:2,pvT:12},['demand','pv'])
+  )),[['demand',null],['import',9],['export',2],['pv',null]],
+    'partial PV suppresses PV and house-demand header totals, preserving complete grid values');
   const row=()=>({
     dataset:{},textContent:'',
     replaceChildren(...nodes){this.textContent=nodes.map(n=>n.textContent).join('');}
@@ -95,5 +100,15 @@ function cardFor(endsComplete){
   summary._updateHeaderSummary.call(widget,{houseEnergy:4,impT:3,expT:1,pvT:2});
   assert.equal(elements.import.dataset.value,'3,00','next period replaces missing with its own value');
   assert.equal(elements.pv.dataset.value,'2,00');
+  widget._pvPlants=()=>[{energy_total:'sensor.pv'}];
+  widget._c={grid:{import_total:'sensor.import',export_total:'sensor.export'}};
+  widget._historyData={partialIds:['sensor.pv']};
+  summary._updateHeaderSummary.call(widget,{
+    historical:true,houseEnergy:19,impT:9,expT:2,pvT:12
+  });
+  assert.equal(elements.pv.textContent,'–','partial-start PV is not labelled a full-period PV total');
+  assert.equal(elements.demand.textContent,'–','demand depending on partial PV is not a full-period total');
+  assert.equal(elements.import.dataset.value,'9,00','complete imported energy remains visible');
+  assert.equal(elements.export.dataset.value,'2,00','complete exported energy remains visible');
   console.log('Selected-period header values: stale reset, complete day boundaries and correct next period passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});
