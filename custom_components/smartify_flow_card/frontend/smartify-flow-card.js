@@ -654,6 +654,7 @@ class SmartifyFlowCard extends HTMLElement {
         }
       }
       if(missingStart.length){
+        try{
         // One batched daily lookup to locate true first recorded days. Don't
         // download every hourly statistic for the entire selected year.
         const days=await this._getStatistics(missingStart,range.from,range.to,'day',{energy:'kWh'});
@@ -691,6 +692,7 @@ class SmartifyFlowCard extends HTMLElement {
           partialFrom[item.id]=item.value.partialFrom;
           if(item.value.through)lastTimes.push(item.value.through);
         }
+        }catch(_){ /* Daily lookup is optional; try bounded hourly recovery. */ }
       }
       // The initial 2h boundary queries miss meters that sleep overnight.
       // Only for a single past day, request a bounded set of hourly buckets
