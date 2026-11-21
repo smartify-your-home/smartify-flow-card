@@ -1,3 +1,10 @@
+## v0.6.33 – Weitere historische Tage aus echten Tagesstatistiken (2026-11-21)
+
+- Bei fehlenden stündlichen Zählerständen rund um Mitternacht nutzt die Karte für einen einzelnen abgeschlossenen Tag zusätzlich zwei tatsächliche Recorder-Tages-SUMs (gewählter Tag und Vortag). Ohne beide Werte oder bei Zählerreset bleibt der Zähler unbekannt; keine Null-Baseline oder Schätzung.
+- Schlägt die gebündelte Recorder-Abfrage durch einzelne IDs fehl, werden kleinere Zählergruppen versucht; gültige andere Quellen bleiben angezeigt. Der Kopfstatus benennt fehlende PV-/Netz-/Akku-Zähler.
+- Gesamtenergiebedarf wird unabhängig von eventuell überschneidenden Einzelverbrauchern ausschließlich aus den notwendigen Quellzählern bilanziert. Ein dadurch negativer Restwert bleibt unbekannt und wird nicht erfunden.
+- Fehlende historische Tage werden nach 60 Sekunden erneut abgefragt, vollständige abgeschlossene Tage weiterhin nach fünf Minuten. Kalender-, Live- und Teilzeitraumdarstellung unverändert.
+- Neue Regression für sparse Tagesstatistiken, Ausfall einzelner Recorder-IDs und korrekte unabhängige Energiebilanz in Validate/Release; keine Push-Validate-Mail-Flut.
 ## v0.6.32 – Historische Tageswerte beim Zurückblättern (2026-11-21)
 
 - **Live → Pfeil links → gestern → weitere Tage:** Zähler mit nächtlichen Messlücken (z. B. PV-Wechselrichter ohne Mitternachts-Statistik) erscheinen wieder, sofern tatsächlich erfasste Zählerstände den Tagesertrag belegen.
