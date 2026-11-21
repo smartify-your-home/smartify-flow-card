@@ -43,7 +43,7 @@ Beim Wechsel der Zeitfilter wird die SVG-Geometrie nach Wiederanzeige des Flow-C
 
 # Smartify Flow Card – Home-Assistant-Integration
 
-**Integration v0.6.31 · Karte v0.6.31**
+**Integration v0.6.32 · Karte v0.6.32**
 
 Die Integration liefert `smartify-flow-card.js` direkt aus `custom_components/smartify_flow_card/frontend/` aus und registriert die JavaScript-Modul-Ressource automatisch. Ein manuelles Kopieren nach `www` ist nicht mehr nötig.
 
@@ -57,6 +57,15 @@ Der Kopfbereich ist unabhängig von der konfigurierten maximalen Breite des Ener
 
 Im Kalender übernehmen **alle zehn Kurzwahlen** ohne „Auswählen“ sofort den Zeitraum und schließen das Popup. Ein einzelner Kalendertag wird ebenfalls mit einem Klick direkt übernommen. Für eine beliebige **Mehrtagesauswahl** zuerst **„Bereich wählen“** aktivieren, dann Anfang und Ende wählen und mit **„Auswählen“** bestätigen. **Abbrechen** und Escape verwerfen, künftige Daten und Zeiträume über fünf Jahre bleiben ausgeschlossen. Tests: `tests/test_period_picker.cjs` und `tests/test_compact_header_picker.cjs`.
 
+## Tagesrückwärtsnavigation und Recorder-Nachtlücken (v0.6.32)
+
+Im Modus **Live** springt die linke Pfeiltaste direkt auf **gestern**; weitere Klicks blättern über **vorgestern** zu noch älteren Tagen. Die Karte fragt die tatsächlichen Recorder-Gesamtenergiezähler für jeden ausgewählten Kalendertag ab.
+
+Gerade PV-Wechselrichter liefern nachts teilweise keine neuen kumulativen Zählerstände. Ein Archivtag darf deshalb nicht allein deshalb leer bleiben, weil die Statistik nicht exakt um Mitternacht aufgezeichnet wurde. Bei einer fehlenden Tagesgrenze fragt die Flow Card für **diesen einen Tag und nur die betroffenen Energiezähler** bis zu 14 Stunden vor Tagesbeginn sowie die Stunden des Tages ab. Ein gemessener Zählerstands-Unterschied wird als **Teilzeitraum** angezeigt; der Kopfwert erhält den kleinen Zusatz **„· Teil“**, die eigentlichen Verbraucher-/Quellkacheln behalten ihre Hinweise. Vollständige Tageswerte tragen keinen Teilzeitraumhinweis. Ohne mindestens zwei echte gültige Zählerstände erscheint weiterhin „–“. Es erfolgt **keine Hochrechnung und keine Annahme eines Null-Zählerstands**.
+
+Die für den gewählten Zeitraum berechnete Hausenergie bleibt die bekannte Bilanz **PV + Netzbezug − Einspeisung + Akkuentladung − Akkuladung**. Sind einzelne dafür benutzte Zähler nur teilweise erfasst, wird auch der daraus berechnete Wert im Kopf als Teilzeitraum markiert. Die Kalenderansicht, schnelle Wechsel, Monats-/Jahresstatistiken und bestehende Home-Assistant-Konfiguration bleiben erhalten.
+
+Regression: `tests/test_live_back_arrow.cjs`, `tests/test_selected_period_metrics.cjs`; beide werden bei der absichtlichen CI-Validierung und beim Release ausgeführt.
 ## Zeitraum-Kennzahlen korrekt aktualisieren (v0.6.31)
 
 Die vier Kennzahlen im Kartenkopf (Energiebedarf, Netzbezug, Netzbelieferung, PV Ertrag) dürfen niemals Werte des zuvor gewählten Datumsbereichs anzeigen. Beim Wechsel eines historischen Zeitraums werden die vorherigen Zahlen sofort durch „–“ ersetzt; bis die Recorder-Abfrage fertig ist, erscheint der vorhandene Ladehinweis. Bei fehlgeschlagenen Anfragen bleiben die Werte unbekannt.
@@ -151,7 +160,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 
 - Einfache Einrichtung über **Einstellungen → Geräte & Dienste → Integration hinzufügen → Smartify Flow Card**.
 - Automatische Lovelace-Ressourcenregistrierung im Speicher-Modus (`resource_mode: storage`).
-- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.31`.
+- Versions-URL gegen Browsercache: `/smartify_flow_card/smartify-flow-card.js?v=0.6.32`.
 - Updates synchronisieren den vorhandenen Ressourceneintrag, ohne weitere Ressourceneinträge zu ändern.
 - Migration eines vorhandenen Ressourceneintrags unter `/local/smartify-flow-card.js` (ggf. mit `?v=...`).
 - Doppelte Einträge der **bekannten** Smartify-Pfade werden bereinigt.
@@ -173,7 +182,7 @@ In der Statistik erscheint unten eine eigene Zeile **„Max. 15-Min.-Netzbezug�
 Die bisherige Karte unter `/config/www/smartify-flow-card.js` **nicht gleich löschen**. Nach Einrichtung unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob jetzt **genau eine** Smartify-Ressource eingetragen ist:
 
 ```text
-/smartify_flow_card/smartify-flow-card.js?v=0.6.31
+/smartify_flow_card/smartify-flow-card.js?v=0.6.32
 ```
 
 Ein vorhandener Eintrag `/local/smartify-flow-card.js` wird automatisch in diesen Pfad geändert. Falls du eine alternative Ressource, z. B. über `/hacsfiles/...`, eingerichtet hast, muss diese manuell entfernt werden, damit die Karte nicht doppelt geladen wird. **Andere** Ressourcen verändert die Integration nicht. Danach Browsercache aktualisieren; die alte Datei kann dann entfernt werden.
@@ -190,7 +199,7 @@ Bei `lovelace: resource_mode: yaml` verändert die Integration die YAML-Datei **
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.31
+    - url: /smartify_flow_card/smartify-flow-card.js?v=0.6.32
       type: module
 ```
 
@@ -232,7 +241,7 @@ Die Unit-Tests bilden die Ressourcenverwaltung nach; **ein echter Test auf einer
 
 ## Versionsanzeige und Updates
 
-HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.31`.
+HACS ermittelt bei Repositories ohne GitHub-Releases unter Umständen die Revision anhand des Git-Commit-Hashes. Dieses Projekt veröffentlicht deshalb **versionierte GitHub-Releases und passende Tags**, zum Beispiel `v0.6.12`. Im HACS-Updatebereich ist die aktuelle veröffentlichte Version maßgeblich. Nach einem HACS-Update startet die Integration mit der passenden versionierten Ressource, etwa `/smartify_flow_card/smartify-flow-card.js?v=0.6.32`.
 
 Bei einer neu angelegten Integration bitte zuerst in HACS aktualisieren und dann **Home Assistant neu starten**, bevor du Browser und App neu lädst. Nach einem Release prüfen, ob der Tag, das Release und die angezeigte HACS-Version übereinstimmen. Ein Commit auf `main` allein ist kein Release.
 
