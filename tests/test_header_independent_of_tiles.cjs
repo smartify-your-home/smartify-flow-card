@@ -53,6 +53,24 @@ assert.ok(first>=0&&firstTile>first,
   'header refresh must precede tile setup, loops and optional statistics');
 assert.equal(src.slice(u0,u1).match(/this\._updateHeaderSummary\(m\)/g)?.length,1,
   'one authoritative header refresh per valid render');
+// No drawn flows and zero eligible tiles must NOT suppress period totals.
+const emptyModel={...model,left:[],right:[],flows:[]};
+const noTiles={
+ ...card,
+ _c:{...card._c,show_stats:false,min_power:99999,min_flow:99999,
+   hide_below_display_power:true},
+ _historicalModel(){return emptyModel},
+ _syncNodes(_container,nodes){assert.deepEqual(Array.from(nodes),[],'tile set is filtered out')},
+ _updateStats(){},_scheduleDraw(){},
+};
+for(const key of metrics){rows[key].textContent='–';rows[key].dataset.value='–';}
+run.call(noTiles);
+assert.equal(rows.demand.textContent,'12,50 kWh','all consumers hidden: demand remains');
+assert.equal(rows.import.textContent,'8,50 kWh','all flow lines hidden: import remains');
+assert.equal(rows.export.textContent,'1,25 kWh','no tiles: export remains');
+assert.equal(rows.pv.textContent,'5,25 kWh','PV tile hidden: measured PV total remains');
+assert.equal(noTiles._flowEl.hidden,false,'a model with no rendered nodes remains a valid period');
+
 // When the history loader is still pending, no previous period can leak.
 card._historicalModel=()=>null;
 run.call(card);
