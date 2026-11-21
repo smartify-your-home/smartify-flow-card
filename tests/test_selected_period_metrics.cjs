@@ -92,6 +92,12 @@ function cardFor(endsComplete){
   }};
   summary._updateHeaderSummary.call(widget,{houseEnergy:19,impT:9,expT:2,pvT:12});
   assert.equal(elements.pv.dataset.value,'12,00');
+  // Reproduces: energy tiles have correct model values, but a header row is
+  // blank/stale despite its dataset cache claiming the same value.
+  elements.pv.textContent='–';
+  summary._updateHeaderSummary.call(widget,{houseEnergy:19,impT:9,expT:2,pvT:12});
+  assert.match(elements.pv.textContent,/12,00 kWh/,'header repairs stale DOM although dataset value was unchanged');
+
   summary._updateHeaderSummary.call(widget,null);
   for(const [k,el] of Object.entries(elements)){
     assert.equal(el.textContent,'–',k+' is cleared when no current-period result');
