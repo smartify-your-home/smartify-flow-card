@@ -773,7 +773,7 @@ class SmartifyFlowCard extends HTMLElement {
       const partialTs=this._historyData.partialFrom?.[this._energyId(id)];
       const partialEnd=this._historyData.partialUntil?.[this._energyId(id)];
       const partialNote=[
-        partialTs!=null?'Teilzeitraum · Messung ab '+new Date(partialTs).toLocaleString('de-AT'):null,
+        partialTs!=null?'Teilzeitraum · Daten ab '+new Date(partialTs).toLocaleString('de-AT'):null,
         partialEnd!=null?'Teilzeitraum · Messung bis '+new Date(partialEnd).toLocaleString('de-AT'):null
       ].filter(Boolean).join(' · ')||null;
       all.push({key:id,kind:'consumer',entity:id,name,icon:this._icon(id,name),color:this._color(id),energy:kwh,w:kwh*1000,historyNote:partialNote});
