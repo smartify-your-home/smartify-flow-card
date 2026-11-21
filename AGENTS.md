@@ -1,3 +1,9 @@
+## Flow Card v0.6.31 – Zeitraum-Kennzahlen müssen zum Picker passen
+
+- Beim Wechsel des historischen Datumsbereichs, während des Ladens und bei Recorder-Fehlern dürfen keine alten kWh-Werte aus dem vorherigen Zeitraum stehen bleiben. Im `_update()`-Pfad ohne gültiges Modell immer `_updateHeaderSummary(null)` aufrufen. Im Historienmodus alle vier Summen aus der aktuellen `_historyData.energy` verwenden.
+- Bei einem abgeschlossenen Zeitraum muss der verifizierte Endzählerstand die exakte lokale Endgrenze erreichen. Fehlende Stunden werden nicht stillschweigend als vollständiger Tageswert ausgewiesen. Eine Startwert-Nachsuche darf kein fehlendes Ende verdecken; für den laufenden Tag bleiben abgeschlossene Recorder-Buckets zulässig.
+- Die Energiebilanz PV + Netzbezug − Netzbelieferung + Akkuentladung − Akkuladung, die Teilzeitraum-Kennzeichnung für später beginnende Statistiken und alle bisherigen Picker-Funktionen beibehalten.
+- `tests/test_selected_period_metrics.cjs` in Validate und Release ausführen. Keine Push-/Synchronize-Trigger reaktivieren, keine bestehenden Tests entfernen. Versionsnummern, README und CHANGELOG synchron halten.
 ## Flow Card v0.6.30 – Feinschliff der Energie-Kopfzeile
 
 - Der gesamte `.history-header` (Titel, Live/Picker/Pfeile, vier KPI-Zeilen) ist gegenüber v0.6.29 **um 8 px nach rechts** versetzt (Margin von `-6px` auf `2px`). Nicht das Energieflussdiagramm verschieben.
