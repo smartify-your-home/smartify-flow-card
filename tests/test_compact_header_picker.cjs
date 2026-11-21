@@ -46,8 +46,8 @@ assert.deepEqual(rowLabels,[
   ['demand','Energiebedarf'],['import','Netzbezug'],
   ['export','Netzbelieferung'],['pv','PV Ertrag']
 ],'exact user labels and priority order');
-assert.match(src,/this\._updateHeaderSummary\(m\);\s*this\._updateStats\(m\);/,
-  'summary refreshes even when detailed statistics are disabled');
+assert.match(src,/this\._m=m;[\s\S]{0,330}this\._updateHeaderSummary\(m\);\s*this\._syncNodes\(/,
+  'summary refreshes before tile rendering and independently of optional statistics');
 
 // Exercise the REAL popup handlers with a tiny DOM shim, without external packages.
 function makeElement() {
