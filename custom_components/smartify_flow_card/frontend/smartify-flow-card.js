@@ -752,16 +752,17 @@ class SmartifyFlowCard extends HTMLElement {
         }
         }catch(_){ /* Daily lookup is optional; try bounded hourly recovery. */ }
       }
-      // The initial 2h boundary queries miss meters that sleep overnight.
-      // Only for a single past day, request a bounded set of hourly buckets
-      // around both boundaries, and only for affected counters.
-      const archivedDay=!range.isToday&&range.to-range.from<=26*3600000;
-      const affected=archivedDay?ids.filter(id=>
+      // Short boundary lookups are not enough for all HA Recorder series.
+      // Use a bounded full-day read for affected counters on BOTH completed
+      // and ongoing calendar days. For today, range.to already ends at now.
+      // A preceding-day baseline can survive a full night of missing samples.
+      const singleDay=range.to-range.from<=26*3600000;
+      const affected=singleDay?ids.filter(id=>
         energy[id]==null||partialIds.includes(id)||missingEndIds.includes(id)):[];
       if(affected.length){
         try{
           const around=await this._getStatistics(
-            affected,range.from-14*3600000,range.to,'hour',{energy:'kWh'});
+            affected,range.from-26*3600000,range.to,'hour',{energy:'kWh'});
           for(const id of affected){
             const value=sfcMeasuredDaySlice(sfcHistoryPoints(around[id],'kWh'),range.from,range.to);
             if(!value)continue; // No two genuine observations: still unknown.
@@ -790,7 +791,7 @@ class SmartifyFlowCard extends HTMLElement {
       // A long-term Recorder daily aggregate may survive even when the
       // boundary hour samples do not. Use TWO adjacent recorded day SUMs,
       // never statistic_during_period/change or an implicit zero baseline.
-      const unresolved=archivedDay?ids.filter(id=>energy[id]==null):[];
+      const unresolved=singleDay&&!range.isToday?ids.filter(id=>energy[id]==null):[];
       if(unresolved.length){
         try{
           const previousDay=sfcAddDays(start,-1);
