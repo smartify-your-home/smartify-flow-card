@@ -18,8 +18,8 @@ assert.deepEqual(normalize(metrics({houseEnergy:null,impT:0,expT:null,pvT:0})),
   'missing meters remain unknown and measured zero remains zero');
 assert.match(src,/houseEnergy: sfcHistoricalBalance\(this\._pvToday\(\)/,
   'live demand uses existing balance, excluding battery charge');
-assert.match(src,/houseEnergy:balance\?\.total\?\?null/,
-  'historical demand uses existing validated balance');
+assert.match(src,/const houseEnergy=sfcHistoricalHouseEnergy\(pv,imp,exp,discharge,charge,hasBattery\)/,
+  'historical household demand uses source meters even if consumer meters overlap');
 assert.match(src,/\.history-header\{margin:0 0 12px 2px/,
   'the whole header is 8px right of the prior negative margin, independent of max_width');
 assert.match(src,/\.period-summary\{[^}]*border-top:1px solid var\(--divider-color\)/,
