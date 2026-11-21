@@ -30,12 +30,13 @@ const card={
    assert.equal(period,'hour');
    assert.equal(units?.energy,'kWh');
    const w=days.date(this._historyRange.start,this._historyRange.end);
-   const head=from===w.from-3600000,tail=from===w.to-7200000;
+   const currentEnd=Math.min(w.to,frozen);
+   const head=from===w.from-3600000,tail=from===currentEnd-7200000;
    if(!ready)return Object.fromEntries(requested.map(id=>[id,[]]));
    const v={'sensor.pv':7,'sensor.import':4,'sensor.export':2};
    if(!head&&!tail)return {};
    return Object.fromEntries(requested.map(id=>[id,[{
-      start:new Date(head?w.from-3600000:Math.floor((w.to-3600000)/3600000)*3600000).toISOString(),
+      start:new Date(head?w.from-3600000:Math.floor((currentEnd-3600000)/3600000)*3600000).toISOString(),
       sum:head?100:100+v[id]
    }]]));
  }
