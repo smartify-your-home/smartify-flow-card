@@ -1,6 +1,6 @@
 /* smartify-flow-card – Energiefluss Quellen -> Verbraucher (Label-basiert), E-Paper-Design
  * Inspiriert von ChromaFlow (Aresitoo/chromaflow, MIT) */
-const SFC_VERSION = '0.6.33';
+const SFC_VERSION = '0.6.34';
 const SFC_PALETTE = ['#00b2bf', '#7e57c2', '#43a047', '#fb8c00', '#e53935', '#1e88e5', '#6d4c41', '#00897b', '#c0ca33', '#8e24aa', '#f4511e', '#3949ab'];
 const SFC_COL = {
   solar: 'var(--smartify-flow-solar-color, #e3a600)',
@@ -635,7 +635,25 @@ class SmartifyFlowCard extends HTMLElement {
       return Object.assign({},...results.filter(r=>r.status==='fulfilled').map(r=>r.value||{}));
     }
   }
+  _showLive(){
+    // Keep one authoritative Today path: Live already owns the ongoing
+    // today's energy counters and refresh cycle. Reentering today via either
+    // navigation arrows or the calendar must not use a stale historical cache.
+    ++this._historySeq;
+    this._historyMode='live';this._historyPreset=null;this._historyRange=null;
+    this._historyData=null;this._historyLoading=false;this._historyError='';
+    this._historyDrawPending=true;
+    this.shadowRoot.querySelector('.history-overlay')?.remove();
+    this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
+  }
   async _loadHistory(start,end,preset=null){
+    // Same behavior for Today chosen from the calendar, shortcut or right
+    // arrow: return to the existing live-day calculation instead of running
+    // an independent, possibly incomplete Recorder history for this day.
+    const today=sfcLocalDate(new Date());
+    if(start===today&&end===today){
+      this._showLive();return;
+    }
     const range=sfcValidatePeriod(start,end);
     if(!range){
       this._historyError='Ungültiger Zeitraum (maximal 5 Jahre, kein zukünftiges Datum).';
@@ -1015,11 +1033,7 @@ class SmartifyFlowCard extends HTMLElement {
     render();overlay.querySelector('h3').focus({preventScroll:true});
   }
   _initHistoryControls(){
-    this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>{
-      ++this._historySeq;this._historyMode='live';this._historyPreset=null;this._historyLoading=false;this._historyDrawPending=true;this._historyError='';
-      this.shadowRoot.querySelector('.history-overlay')?.remove();
-      this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
-    });
+    this.shadowRoot.querySelector('.history-live').addEventListener('click',()=>this._showLive());
     this.shadowRoot.querySelector('.history-picker').addEventListener('click',()=>this._openHistoryDialog());
     for(const [selector,step] of [['.history-prev',-1],['.history-next',1]]){
       this.shadowRoot.querySelector(selector).addEventListener('click',()=>{
