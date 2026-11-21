@@ -647,13 +647,8 @@ class SmartifyFlowCard extends HTMLElement {
     this._historyStatus();this._update();this._maybeEnergy();this._maybeLivePeak();
   }
   async _loadHistory(start,end,preset=null){
-    // Same behavior for Today chosen from the calendar, shortcut or right
-    // arrow: return to the existing live-day calculation instead of running
-    // an independent, possibly incomplete Recorder history for this day.
-    const today=sfcLocalDate(new Date());
-    if(start===today&&end===today){
-      this._showLive();return;
-    }
+    // Arrow navigation and calendar must use the SAME historical loader for
+    // any selected day, including today. Only the Live button switches mode.
     const range=sfcValidatePeriod(start,end);
     if(!range){
       this._historyError='Ungültiger Zeitraum (maximal 5 Jahre, kein zukünftiges Datum).';
@@ -668,10 +663,14 @@ class SmartifyFlowCard extends HTMLElement {
     this._historyDrawPending=true;
     this._historyData=null;this._historyError='';this._historyStatus();this._update();
     const cache=this._historyCache.get(key);
-    if(cache?.until>Date.now()){
+    if(cache?.until>Date.now()&&cache?.complete===true){
       this._historyData=cache.data;this._historyLoading=false;
       this._historyStatus();this._update();return;
     }
+    // Never replay a missing/partial response from a previous click.
+    // Such results may have been received before Recorder finished writing
+    // statistics; a fresh selection must requery the chosen day.
+    if(cache&&!cache.complete)this._historyCache.delete(key);
     try{
       // Read only the BEGINNING and END of the selected period. Never rely
       // on recorder/statistic_during_period 'change': if its first recorded
@@ -832,9 +831,15 @@ class SmartifyFlowCard extends HTMLElement {
       this._historyData={energy,peak,partialIds,partialFrom,lastTimes,missingEndIds,partialUntil};
       // Missing counters often arrive later from Recorder. Recheck promptly
       // rather than caching a completely empty day for five minutes.
-      const missing=ids.some(id=>energy[id]==null);
-      this._historyCache.set(key,{until:Date.now()+(range.isToday||missing?60000:300000),data:this._historyData});
-      while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
+      const incomplete=ids.some(id=>energy[id]==null||
+        partialIds.includes(id)||missingEndIds.includes(id));
+      if(!incomplete){
+        this._historyCache.set(key,{until:Date.now()+(range.isToday?60000:300000),
+          complete:true,data:this._historyData});
+        while(this._historyCache.size>5)this._historyCache.delete(this._historyCache.keys().next().value);
+      }else{
+        this._historyCache.delete(key);
+      }
     }catch(_){
       if(seq!==this._historySeq)return;
       this._historyData=null;this._historyError='Recorder-Statistiken nicht verfügbar';
