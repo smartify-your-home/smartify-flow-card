@@ -225,6 +225,6 @@ Diese Datei ist für **jede** Weiterentwicklung verbindlich. Vor jedem Eingriff 
 - **CHANGELOG.md**: Jede Version in eigener Rubrik mit sichtbaren Änderungen, wichtigen Fixes und ggf. Migrationshinweisen.
 - **Deutsch/Englisch Übersetzungen und Hinweise im Editor**: zu jeder relevanten Option passende, kurze, aktuelle Beschreibung/Einheiten und Defaults.
 - **AGENTS.md** wird bei neuen Entwicklungsregeln/Funktionen laufend fortgeschrieben.
-- Tests: `python -m unittest discover -s tests -v`, `python -m compileall -q custom_components`, `node --check custom_components/smartify_flow_card/frontend/smartify-flow-card.js`, `node tests/test_power_allocation.cjs`, `node tests/test_badge_layout.cjs`, `python scripts/check_version.py`.
+- **Pflicht vor JEDEM Push und vor „Ready for review“: `bash scripts/precheck.sh` muss grün sein.** Das Skript führt alle CI-Prüfungen aus (unittest, check_version, compileall, `node --check` und **alle** `tests/*.cjs`, in UTC wie die CI) und meldet JS-Tests, die in `validate.yml`/`release.yml` fehlen. Nicht pushen, um „zu sehen, was die CI sagt“. Neue `tests/*.cjs` immer in beide Workflows eintragen.
 - Regressionsprüfungen insbesondere für PV-Badges/Flows, Netzsaldo-Vorzeichen, Tagessummen, schmale iPhone-/iPad-Layouts, Themewechsel, Scrollgriff und Ressourcenmigration.
 - Syntax- oder Mocks-Tests sind **kein** HA-Livetest. Klar sagen, was geprüft und was nicht geprüft wurde.
